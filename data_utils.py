@@ -4,7 +4,7 @@
 @Author: chenhao
 @Date: 2020-06-23 20:06:58
 @LastEditors: chenhao
-@LastEditTime: 2020-06-23 20:07:06
+@LastEditTime: 2020-06-23 23:36:39
 '''
 
 import os
@@ -85,11 +85,16 @@ class BertSentenceDataset(Dataset):
             bert_segments_ids = np.asarray([0] * (np.sum(text_raw_indices != 0) + 2) + [1] * (speaker_len + 1))
             bert_segments_ids = tokenizer.pad_sequence(bert_segments_ids, 0, tokenizer.max_length)
             polarity = obj['polarity']
+
+            attention_mask = np.asarray([1] * np.sum(text_raw_bert_indices != 0) + [0] * (opt.max_length - np.sum(text_raw_bert_indices != 0)))
+            attention_mask_pair = np.asarray([1] * np.sum(text_bert_indices != 0) + [0] * (opt.max_length - np.sum(text_bert_indices != 0)))
             data.append(
                 {
                     'text_raw_bert_indices': text_raw_bert_indices,
                     'bert_segments_ids': bert_segments_ids,
                     'text_bert_indices': text_bert_indices,
+                    'attention_mask': attention_mask,
+                    'attention_mask_pair': attention_mask_pair,
                     'polarity': polarity
                 }
             )
