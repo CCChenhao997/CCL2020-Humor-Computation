@@ -4,7 +4,7 @@
 @Author: chenhao
 @Date: 2020-06-23 20:07:14
 @LastEditors: chenhao
-@LastEditTime: 2020-06-23 20:07:30
+@LastEditTime: 2020-06-23 23:37:15
 '''
 
 import os
@@ -23,6 +23,7 @@ from pytorch_transformers import AdamW
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torch.nn.utils import clip_grad_norm_
+from models.bert import BERT
 from models.bert_spc import BERT_SPC
 from data_utils import Tokenizer4Bert, BertSentenceDataset
 import logging
@@ -47,10 +48,12 @@ class Instructor:
     ''' Model training and evaluation '''
     def __init__(self, opt):
         self.opt = opt
-        tokenizer = Tokenizer4Bert(opt.max_length, opt.pretrained_bert_name)
-        bert = BertModel.from_pretrained(opt.pretrained_bert_name)
-        # tokenizer = Tokenizer4Bert(opt.max_length, './bert_pretrain')
-        # bert = BertModel.from_pretrained('CCL2020-Humor-Computation/bert_pretrain')
+        if opt.dataset == "en":
+            tokenizer = Tokenizer4Bert(opt.max_length, opt.pretrained_bert_name)
+            bert = BertModel.from_pretrained(opt.pretrained_bert_name)
+        else:
+            tokenizer = Tokenizer4Bert(opt.max_length, './pretrain_models/ERNIE_cn')
+            bert = BertModel.from_pretrained('./pretrain_models/ERNIE_cn')
         self.model = opt.model_class(bert, opt).to(opt.device)
         trainset = BertSentenceDataset(opt.dataset_file['train'], tokenizer, target_dim=self.opt.polarities_dim, opt=opt)
         testset = BertSentenceDataset(opt.dataset_file['test'], tokenizer, target_dim=self.opt.polarities_dim, opt=opt)
@@ -199,6 +202,7 @@ class Instructor:
 def main():
     
     model_classes = {
+        'bert': BERT,
         'bert_spc': BERT_SPC,
     }
     
@@ -214,7 +218,8 @@ def main():
     }
     
     input_colses = {
-        'bert_spc': ['text_bert_indices', 'bert_segments_ids'],
+        'bert': ['text_raw_bert_indices', 'attention_mask']
+        'bert_spc': ['text_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
     }
     
     initializers = {
@@ -245,8 +250,11 @@ def main():
     parser.add_argument('--num_epoch', default=20, type=int)
     parser.add_argument('--batch_size', default=16, type=int)
     parser.add_argument('--log_step', default=5, type=int)
-    parser.add_argument('--polarities_dim', default=2, type=int, help='2, 3')
-    parser.add_argument('--max_length', default=100, type=int)
+    # parser.add_argument('--embed_dim', default=300, type=int)
+    # parser.add_argument('--hidden_dim', default=200, type=int)
+    # parser.add_argument('--position_dim', default=100, type=int)
+    parser.add_argument('--polarities_dim', default=2, type=int, help='2')
+    parser.add_argument('--max_length', default=80, type=int)
     parser.add_argument('--device', default=None, type=str, help='cpu, cuda')
     parser.add_argument('--repeats', default=1, type=int)
     parser.add_argument('--seed', default=0, type=int)
