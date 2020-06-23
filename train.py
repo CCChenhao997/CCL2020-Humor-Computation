@@ -4,7 +4,7 @@
 @Author: chenhao
 @Date: 2020-06-23 20:07:14
 @LastEditors: chenhao
-@LastEditTime: 2020-06-23 23:37:15
+@LastEditTime: 2020-06-23 23:41:16
 '''
 
 import os
@@ -218,7 +218,7 @@ def main():
     }
     
     input_colses = {
-        'bert': ['text_raw_bert_indices', 'attention_mask']
+        'bert': ['text_raw_bert_indices', 'attention_mask'],
         'bert_spc': ['text_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
     }
     
