@@ -1,12 +1,3 @@
-'''
-@Description: 
-@version: 
-@Author: chenhao
-@Date: 2020-06-23 20:06:58
-@LastEditors: chenhao
-@LastEditTime: 2020-06-23 23:36:39
-'''
-
 import os
 import nltk
 import re
@@ -14,8 +5,7 @@ import json
 import pickle
 import numpy as np
 import pandas as pd
-from pytorch_transformers import BertTokenizer
-# from transformers import BertTokenizer
+from transformers import BertTokenizer, AutoTokenizer, XLMRobertaTokenizer, GPT2Tokenizer, RobertaTokenizer
 from torch.utils.data import Dataset
 
 
@@ -36,6 +26,8 @@ def parse_data(data_path):
 class Tokenizer4Bert(object):
     def __init__(self, max_length, pretrained_bert_name):
         self.tokenizer = BertTokenizer.from_pretrained(pretrained_bert_name)
+        # self.tokenizer = RobertaTokenizer.from_pretrained(pretrained_bert_name)
+        # self.tokenizer = AutoTokenizer.from_pretrained(pretrained_bert_name)
         self.max_length = max_length
 
     def text_to_sequence(self, text, reverse=False, padding='post', truncating='post'):
