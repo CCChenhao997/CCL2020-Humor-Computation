@@ -4,7 +4,7 @@
 @Author: chenhao
 @Date: 2020-06-23 23:36:02
 @LastEditors: chenhao
-@LastEditTime: 2020-06-23 23:36:11
+@LastEditTime: 2020-06-25 22:50:16
 '''
 
 import torch
@@ -23,7 +23,7 @@ class BERT(nn.Module):
 
     def forward(self, inputs):
         text_bert_indices, attention_mask = inputs[0], inputs[1]
-        _, pooled_output, o = self.bert(text_bert_indices, attention_mask=attention_mask)
+        _, pooled_output = self.bert(text_bert_indices, attention_mask=attention_mask)
         pooled_output = self.dropout(pooled_output)
         logits = self.dense(pooled_output)
         return logits
