@@ -13,7 +13,7 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torch.nn.utils import clip_grad_norm_
 from loss_helper import FocalLoss
-from models.bert import BERT
+from models.bert_sen import BERT_Sen
 from models.bert_spc import BERT_SPC
 from models.bert_att import BERT_Att
 from data_utils import Tokenizer4Bert, BertSentenceDataset
@@ -39,16 +39,9 @@ class Instructor:
     ''' Model training and evaluation '''
     def __init__(self, opt):
         self.opt = opt
-        if opt.dataset == "en":
-            tokenizer = Tokenizer4Bert(opt.max_length, opt.pretrained_bert_name)
-            bert = BertModel.from_pretrained(opt.pretrained_bert_name)
-            # bert = RobertaModel.from_pretrained(opt.pretrained_bert_name)
-            self.pretrained_bert_state_dict = bert.state_dict()
-        else:
-            tokenizer = Tokenizer4Bert(opt.max_length, './pretrain_models/ERNIE_cn')
-            bert = BertModel.from_pretrained('./pretrain_models/ERNIE_cn')
-            # tokenizer = Tokenizer4Bert(opt.max_length, './pretrain_models/electra_base_discriminator_cn')
-            # bert = AutoModel.from_pretrained('./pretrain_models/electra_base_discriminator_cn')
+        tokenizer = Tokenizer4Bert(opt.max_length, opt.pretrained_bert_name)
+        bert = BertModel.from_pretrained(opt.pretrained_bert_name)
+        self.pretrained_bert_state_dict = bert.state_dict()
         self.model = opt.model_class(bert, opt).to(opt.device)
         trainset = BertSentenceDataset(opt.dataset_file['train'], tokenizer, target_dim=self.opt.polarities_dim, opt=opt)
         testset = BertSentenceDataset(opt.dataset_file['test'], tokenizer, target_dim=self.opt.polarities_dim, opt=opt)
@@ -60,6 +53,8 @@ class Instructor:
             # print('cuda memory allocated:', torch.cuda.memory_allocated(self.opt.device.index))
             logger.info('cuda memory allocated: {}'.format(torch.cuda.memory_allocated(self.opt.device.index)))
         self._print_args()
+        self.count1 = 0
+        self.count2 = 0
     
     def _print_args(self):
         n_trainable_params, n_nontrainable_params = 0, 0
@@ -116,7 +111,14 @@ class Instructor:
         #     optimizer, warmup_steps=args.warmup_steps, t_total=t_total)
         return optimizer
     
-    def _train(self, criterion, optimizer, max_test_acc_overall=0, max_f1_overall=0):
+    def _train(self, max_test_acc_overall=0, max_f1_overall=0):
+        # criterion = nn.CrossEntropyLoss()
+        criterion = FocalLoss(num_class=2, alpha=0.25, gamma=2, smooth=0.2)
+        if 'bert' in self.opt.model_name:
+            optimizer = self.get_bert_optimizer(self.opt, self.model)
+        else:
+            _params = filter(lambda p: p.requires_grad, self.model.parameters())
+            optimizer = self.opt.optimizer(_params, lr=self.opt.learning_rate, weight_decay=self.opt.l2reg)
         max_test_acc = 0
         max_f1 = 0
         global_step = 0
@@ -185,19 +187,12 @@ class Instructor:
         return test_acc, f1
     
     def run(self, repeats=1):
-        # criterion = nn.CrossEntropyLoss()
-        criterion = FocalLoss(num_class=2, alpha=0.25, gamma=2, smooth=0.2)
-        if 'bert' in self.opt.model_name:
-            optimizer = self.get_bert_optimizer(self.opt, self.model)
-        else:
-            _params = filter(lambda p: p.requires_grad, self.model.parameters())
-            optimizer = self.opt.optimizer(_params, lr=self.opt.learning_rate, weight_decay=self.opt.l2reg)
         max_test_acc_overall = 0
         max_f1_overall = 0
         for i in range(repeats):
             logger.info('repeat:{}'.format(i))
-            self._reset_params()
-            max_test_acc, max_f1 = self._train(criterion, optimizer, max_test_acc_overall, max_f1_overall)
+            # self._reset_params()
+            max_test_acc, max_f1 = self._train(max_test_acc_overall, max_f1_overall)
             logger.info('max_test_acc: {0}, max_f1: {1}'.format(max_test_acc, max_f1))
             max_test_acc_overall = max(max_test_acc, max_test_acc_overall)
             max_f1_overall = max(max_f1, max_f1_overall)
@@ -209,7 +204,7 @@ class Instructor:
 def main():
     
     model_classes = {
-        'bert': BERT,
+        'bert_sen': BERT_Sen,
         'bert_att': BERT_Att,
         'bert_spc': BERT_SPC,
     }
@@ -226,7 +221,7 @@ def main():
     }
     
     input_colses = {
-        'bert': ['text_raw_bert_indices', 'attention_mask'],
+        'bert_sen': ['text_raw_bert_indices', 'attention_mask'],
         'bert_att': ['text_raw_bert_indices', 'attention_mask'],
         'bert_spc': ['text_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
     }
