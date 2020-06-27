@@ -1,2 +1,6 @@
 data/raw/*
 data/preprocess/*
+data_StratifiedKFold_666/*
+data_StratifiedKFold_666_pseudo/*
+.ipynb_checkpoints/*
+predict_data/*
