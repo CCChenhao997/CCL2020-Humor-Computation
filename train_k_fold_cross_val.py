@@ -4,22 +4,22 @@ import torch.nn as nn
 import argparse
 import random
 import math
+import logging
+import sys
 from time import strftime, localtime
 from sklearn import metrics
 import numpy as np
 from transformers import BertModel, AutoModel, XLMRobertaModel, GPT2Model, RobertaModel
 from transformers import AdamW
-from torch.autograd import Variable
 from torch.utils.data import DataLoader, random_split, ConcatDataset
 from torch.nn.utils import clip_grad_norm_
 from loss_helper import FocalLoss
-from models.bert import BERT
+from models.bert_sen import BERT_Sen
 from models.bert_spc import BERT_SPC
 from models.bert_att import BERT_Att
 from data_utils import Tokenizer4Bert, BertSentenceDataset
-import logging
-import sys
-import os
+from sklearn.model_selection import StratifiedKFold, KFold
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 logger = logging.getLogger()
@@ -39,18 +39,14 @@ class Instructor:
     ''' Model training and evaluation '''
     def __init__(self, opt):
         self.opt = opt
-        # if opt.dataset == "en":
-        #     tokenizer = Tokenizer4Bert(opt.max_length, opt.pretrained_bert_name)
-        #     bert = BertModel.from_pretrained(opt.pretrained_bert_name)
-        #     # bert = RobertaModel.from_pretrained(opt.pretrained_bert_name)
-        #     self.pretrained_bert_state_dict = bert.state_dict()
-        # else:
         tokenizer = Tokenizer4Bert(opt.max_length, opt.pretrained_bert_name)
-        bert = BertModel.from_pretrained(opt.pretrained_bert_name)
-        self.pretrained_bert_state_dict = bert.state_dict()
-        self.model = opt.model_class(bert, opt).to(opt.device)
-        self.trainset = BertSentenceDataset(opt.dataset_file['train'], tokenizer, target_dim=self.opt.polarities_dim, opt=opt)
-        # self.testset = BertSentenceDataset(opt.dataset_file['test'], tokenizer, target_dim=self.opt.polarities_dim, opt=opt)
+        bert_model = BertModel.from_pretrained(opt.pretrained_bert_name)
+        self.pretrained_bert_state_dict = bert_model.state_dict()
+        self.model = opt.model_class(bert_model, opt).to(opt.device)
+        trainset = BertSentenceDataset(opt.dataset_file['train'], tokenizer, target_dim=self.opt.polarities_dim, opt=opt)
+        testset = BertSentenceDataset(opt.dataset_file['test'], tokenizer, target_dim=self.opt.polarities_dim, opt=opt)
+        self.train_dataloader = DataLoader(dataset=trainset, batch_size=opt.batch_size, shuffle=True)   # , drop_last=True
+        self.test_dataloader = DataLoader(dataset=testset, batch_size=opt.batch_size, shuffle=False)
 
         if opt.device.type == 'cuda':
             logger.info('cuda memory allocated: {}'.format(torch.cuda.memory_allocated(self.opt.device.index)))
@@ -98,7 +94,14 @@ class Instructor:
         #     optimizer, warmup_steps=args.warmup_steps, t_total=t_total)
         return optimizer
     
-    def _train(self, criterion, optimizer, max_test_acc_overall=0, max_f1_overall=0, fid=0):
+    def _train(self, max_test_acc_overall=0, max_f1_overall=0):
+        # criterion = nn.CrossEntropyLoss()
+        criterion = FocalLoss(num_class=2, alpha=0.25, gamma=2, smooth=0.2)
+        if 'bert' in self.opt.model_name:
+            optimizer = self.get_bert_optimizer(self.opt, self.model)
+        else:
+            _params = filter(lambda p: p.requires_grad, self.model.parameters())
+            optimizer = self.opt.optimizer(_params, lr=self.opt.learning_rate, weight_decay=self.opt.l2reg)
         max_test_acc = 0
         max_f1 = 0
         global_step = 0
@@ -126,18 +129,12 @@ class Instructor:
                     test_acc, f1 = self._evaluate()
                     if test_acc > max_test_acc:
                         max_test_acc = test_acc
-                        # if test_acc > max_test_acc_overall:
-                        #     if not os.path.exists('state_dict'):
-                        #         os.mkdir('state_dict')
-                        #     path = './state_dict/{0}_{1}_acc_{2:.4f}'.format(self.opt.model_name, self.opt.dataset, test_acc)
-                        #     torch.save(self.model.state_dict(), path)
-                        #     logger.info('>> saved: {}'.format(path))
                     if f1 > max_f1:
                         max_f1 = f1
                         if f1 > max_f1_overall:
                             if not os.path.exists('state_dict'):
                                 os.mkdir('state_dict')
-                            path = './state_dict/{0}_{1}_fold{2}_f1_{3:.4f}'.format(self.opt.model_name, self.opt.dataset, fid, f1)
+                            path = './state_dict/{0}_{1}_f1_{2:.4f}'.format(self.opt.model_name, self.opt.dataset, f1)
                             torch.save(self.model.state_dict(), path)
                             logger.info('>> saved: {}'.format(path))
 
@@ -165,62 +162,73 @@ class Instructor:
         return test_acc, f1
     
     def run(self, repeats=1):
-        # criterion = nn.CrossEntropyLoss()
-        criterion = FocalLoss(num_class=2, alpha=0.25, gamma=2, smooth=0.2)
-        if 'bert' in self.opt.model_name:
-            optimizer = self.get_bert_optimizer(self.opt, self.model)
-        else:
-            _params = filter(lambda p: p.requires_grad, self.model.parameters())
-            optimizer = self.opt.optimizer(_params, lr=self.opt.learning_rate, weight_decay=self.opt.l2reg)
-        
-        valset_len = len(self.trainset) // self.opt.cross_val_fold
-        splitedsets = random_split(self.trainset, tuple([valset_len] * (self.opt.cross_val_fold - 1) + [len(self.trainset) - valset_len * (self.opt.cross_val_fold - 1)]))
-        all_test_acc, all_test_f1 = [], []
-        for fid in range(self.opt.cross_val_fold):
-            logger.info('fold : {}'.format(fid))
-            logger.info('*' * 60)
-            max_test_acc_overall = 0
-            max_f1_overall = 0
-            trainset = ConcatDataset([x for i, x in enumerate(splitedsets) if i != fid])
-            valset = splitedsets[fid]
-            self.train_dataloader = DataLoader(dataset=trainset, batch_size=self.opt.batch_size, shuffle=True)
-            self.test_dataloader = DataLoader(dataset=valset, batch_size=self.opt.batch_size, shuffle=False)
-            self._reset_params()
-            max_test_acc, max_f1 = self._train(criterion, optimizer, max_test_acc_overall, max_f1_overall, fid)
-            all_test_acc.append(max_test_acc)
-            all_test_f1.append(max_f1)
-            logger.info('{0}: max_test_acc: {1}, max_f1: {2}'.format(fid, max_test_acc, max_f1))
+        max_test_acc_overall = 0
+        max_f1_overall = 0
+        for i in range(repeats):
+            logger.info('repeat:{}'.format(i))
+            # self._reset_params()
+            max_test_acc, max_f1 = self._train(max_test_acc_overall, max_f1_overall)
+            logger.info('max_test_acc: {0}, max_f1: {1}'.format(max_test_acc, max_f1))
             max_test_acc_overall = max(max_test_acc, max_test_acc_overall)
             max_f1_overall = max(max_f1, max_f1_overall)
             logger.info('#' * 60)
         logger.info('max_test_acc_overall:{}'.format(max_test_acc_overall))
         logger.info('max_f1_overall:{}'.format(max_f1_overall))
-        mean_test_acc, mean_test_f1 = np.mean(all_test_acc), np.mean(all_test_f1)
-        logger.info('>' * 60)
-        logger.info('>>> mean_test_acc: {:.4f}, mean_test_f1: {:.4f}'.format(mean_test_acc, mean_test_f1))
 
 
 def main():
     
     model_classes = {
-        'bert': BERT,
+        'bert_sen': BERT_Sen,
         'bert_att': BERT_Att,
         'bert_spc': BERT_SPC,
     }
     
     dataset_files = {
-        'cn': {
-            'train': './data/preprocess/cn_total.tsv',
-            # 'test': './data/preprocess/cn_dev.tsv'
+        'cn_fold_0': {
+            'train': './data_StratifiedKFold_666_pseudo/cn/data_fold_0/train.csv',
+            'test': './data_StratifiedKFold_666_pseudo/cn/data_fold_0/test.csv'
         },
-        'en': {
-            'train': './data/preprocess/en_total.tsv',
-            # 'test': './data/preprocess/en_dev.tsv'
+        'cn_fold_1': {
+            'train': './data_StratifiedKFold_666_pseudo/cn/data_fold_1/train.csv',
+            'test': './data_StratifiedKFold_666_pseudo/cn/data_fold_1/test.csv'
+        },
+        'cn_fold_2': {
+            'train': './data_StratifiedKFold_666_pseudo/cn/data_fold_2/train.csv',
+            'test': './data_StratifiedKFold_666_pseudo/cn/data_fold_2/test.csv'
+        },
+        'cn_fold_3': {
+            'train': './data_StratifiedKFold_666_pseudo/cn/data_fold_3/train.csv',
+            'test': './data_StratifiedKFold_666_pseudo/cn/data_fold_3/test.csv'
+        },
+        'cn_fold_4': {
+            'train': './data_StratifiedKFold_666_pseudo/cn/data_fold_4/train.csv',
+            'test': './data_StratifiedKFold_666_pseudo/cn/data_fold_4/test.csv'
+        },
+        'en_fold_0': {
+            'train': './data_StratifiedKFold_666_pseudo/en/data_fold_0/train.csv',
+            'test': './data_StratifiedKFold_666_pseudo/en/data_fold_0/test.csv'
+        },
+        'en_fold_1': {
+            'train': './data_StratifiedKFold_666_pseudo/en/data_fold_1/train.csv',
+            'test': './data_StratifiedKFold_666_pseudo/en/data_fold_1/test.csv'
+        },
+        'en_fold_2': {
+            'train': './data_StratifiedKFold_666_pseudo/en/data_fold_2/train.csv',
+            'test': './data_StratifiedKFold_666_pseudo/en/data_fold_2/test.csv'
+        },
+        'en_fold_3': {
+            'train': './data_StratifiedKFold_666_pseudo/en/data_fold_3/train.csv',
+            'test': './data_StratifiedKFold_666_pseudo/en/data_fold_3/test.csv'
+        },
+        'en_fold_4': {
+            'train': './data_StratifiedKFold_666_pseudo/en/data_fold_4/train.csv',
+            'test': './data_StratifiedKFold_666_pseudo/en/data_fold_4/test.csv'
         }
     }
     
     input_colses = {
-        'bert': ['text_raw_bert_indices', 'attention_mask'],
+        'bert_sen': ['text_raw_bert_indices', 'attention_mask'],
         'bert_att': ['text_raw_bert_indices', 'attention_mask'],
         'bert_spc': ['text_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
     }
@@ -249,7 +257,7 @@ def main():
     parser.add_argument('--initializer', default='xavier_uniform_', type=str, help=', '.join(initializers.keys()))
     parser.add_argument('--learning_rate', default=0.002, type=float)    # 1e-3
     parser.add_argument('--dropout', default=0.5, type=float)
-    parser.add_argument('--l2reg', default=1e-4, type=float)    # 1e-5
+    parser.add_argument('--l2reg', default=1e-5, type=float)    # 1e-5
     parser.add_argument('--num_epoch', default=20, type=int)
     parser.add_argument('--batch_size', default=16, type=int)
     parser.add_argument('--log_step', default=5, type=int)
@@ -290,3 +298,31 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+    # def run(self, repeats=1):
+    #     valset_len = len(self.trainset) // self.opt.cross_val_fold
+    #     splitedsets = random_split(self.trainset, tuple([valset_len] * (self.opt.cross_val_fold - 1) + [len(self.trainset) - valset_len * (self.opt.cross_val_fold - 1)]))
+    #     all_test_acc, all_test_f1 = [], []
+    #     for fid in range(self.opt.cross_val_fold):
+    #         logger.info('fold : {}'.format(fid))
+    #         logger.info('*' * 60)
+    #         max_test_acc_overall = 0
+    #         max_f1_overall = 0
+    #         trainset = ConcatDataset([x for i, x in enumerate(splitedsets) if i != fid])
+    #         valset = splitedsets[fid]
+    #         self.train_dataloader = DataLoader(dataset=trainset, batch_size=self.opt.batch_size, shuffle=True)
+    #         self.test_dataloader = DataLoader(dataset=valset, batch_size=self.opt.batch_size, shuffle=False)
+    #         self._reset_params()
+    #         max_test_acc, max_f1 = self._train(max_test_acc_overall, max_f1_overall, fid)
+    #         all_test_acc.append(max_test_acc)
+    #         all_test_f1.append(max_f1)
+    #         logger.info('{0}: max_test_acc: {1}, max_f1: {2}'.format(fid, max_test_acc, max_f1))
+    #         max_test_acc_overall = max(max_test_acc, max_test_acc_overall)
+    #         max_f1_overall = max(max_f1, max_f1_overall)
+    #         logger.info('#' * 60)
+    #     logger.info('max_test_acc_overall:{}'.format(max_test_acc_overall))
+    #     logger.info('max_f1_overall:{}'.format(max_f1_overall))
+    #     mean_test_acc, mean_test_f1 = np.mean(all_test_acc), np.mean(all_test_f1)
+    #     logger.info('>' * 60)
+    #     logger.info('>>> mean_test_acc: {:.4f}, mean_test_f1: {:.4f}'.format(mean_test_acc, mean_test_f1))
