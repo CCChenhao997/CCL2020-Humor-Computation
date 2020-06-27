@@ -15,7 +15,10 @@ def parse_data(data_path):
     for index, line in df.iterrows():
         speaker = line[1].lower().strip()
         sentence = line[2].lower().strip()
-        polarity = int(line[3])
+        try:
+            polarity = int(line[3])
+        except:
+            polarity = 0
 
         data = {'speaker': speaker, 'sentence': sentence, 'polarity': polarity}
         all_data.append(data)
