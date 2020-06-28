@@ -6,6 +6,7 @@ import random
 import math
 import logging
 import sys
+import time
 from time import strftime, localtime
 from sklearn import metrics
 import numpy as np
@@ -14,12 +15,13 @@ from transformers import AdamW
 from torch.utils.data import DataLoader, random_split, ConcatDataset
 from torch.nn.utils import clip_grad_norm_
 from models_utils.loss_helper import FocalLoss
+from models_utils.adv_helper import FGM, PGD
 from models.bert import BERT
 from models.bert_spc import BERT_SPC
 from models.bert_att import BERT_Att
 from models.bert_spc_att import BERT_SPC_Att
 from models.bert_spc_pos import BERT_SPC_Pos
-from data_utils import Tokenizer4Bert, BertSentenceDataset
+from data_utils import Tokenizer4Bert, BertSentenceDataset, get_time_dif
 from sklearn.model_selection import StratifiedKFold, KFold
 
 logger = logging.getLogger()
@@ -67,17 +69,25 @@ class Instructor:
             logger.info('>>> {0}: {1}'.format(arg, getattr(self.opt, arg)))
     
     def _reset_params(self):
-        for child in self.model.children():
-            if type(child) != BertModel:  # skip bert params
-                for p in child.parameters():
-                    if p.requires_grad:
-                        if len(p.shape) > 1:
-                            self.opt.initializer(p)
-                        else:
-                            stdv = 1. / math.sqrt(p.shape[0])
-                            torch.nn.init.uniform_(p, a=-stdv, b=stdv)
-            else:
-                self.model.bert.load_state_dict(self.pretrained_bert_state_dict)
+        # for child in self.model.children():
+        #     if type(child) != BertModel:  # skip bert params
+        #         for p in child.parameters():
+        #             if p.requires_grad:
+        #                 if len(p.shape) > 1:
+        #                     self.opt.initializer(p)
+        #                 else:
+        #                     stdv = 1. / math.sqrt(p.shape[0])
+        #                     torch.nn.init.uniform_(p, a=-stdv, b=stdv)
+        #     else:
+        #         self.model.bert.load_state_dict(self.pretrained_bert_state_dict)
+        for name, param in self.model.named_parameters():
+            if 'bert' not in name:
+                if param.requires_grad:
+                    if len(param.shape) > 1:
+                        self.opt.initializer(param)
+                    else:
+                        stdv = 1. / math.sqrt(param.shape[0])
+                        torch.nn.init.uniform_(param, a=-stdv, b=stdv)
 
     def get_bert_optimizer(self, opt, model):
         # Prepare optimizer and schedule (linear warmup and decay)
@@ -95,6 +105,10 @@ class Instructor:
         return optimizer
     
     def _train(self, max_test_acc_overall=0, max_f1_overall=0):
+        # 对抗训练
+        if self.opt.adv_type == 'fgm':
+            fgm = FGM(self.model)
+
         # criterion = nn.CrossEntropyLoss()
         criterion = FocalLoss(num_class=2, alpha=0.25, gamma=2, smooth=0.2)
         if 'bert' in self.opt.model_name:
@@ -120,6 +134,14 @@ class Instructor:
 
                 loss = criterion(outputs, targets) 
                 loss.backward()
+
+                if self.opt.adv_type == 'fgm':
+                    fgm.attack()  ##对抗训练
+                    outputs = self.model(inputs)
+                    loss_adv = criterion(outputs, targets)
+                    loss_adv.backward()
+                    fgm.restore()
+
                 optimizer.step()
                 
                 if global_step % self.opt.log_step == 0:    # 每隔opt.log_step就输出日志
@@ -139,9 +161,9 @@ class Instructor:
                             logger.info('>> saved: {}'.format(path))
 
                     logger.info('loss: {:.4f}, acc: {:.4f}, test_acc: {:.4f}, f1: {:.4f}'.format(loss.item(), train_acc, test_acc, f1))
-        return max_test_acc, max_f1
+        return max_test_acc, max_f1, path
     
-    def _evaluate(self):
+    def _evaluate(self, show_results=False):
         # switch model to evaluation mode
         self.model.eval()
         n_test_correct, n_test_total = 0, 0
@@ -159,7 +181,28 @@ class Instructor:
                 t_outputs_all = torch.cat((t_outputs_all, t_outputs), dim=0) if t_outputs_all is not None else t_outputs
         test_acc = n_test_correct / n_test_total
         f1 = metrics.f1_score(t_targets_all.cpu(), torch.argmax(t_outputs_all, -1).cpu(), labels=[0, 1], average='macro')
+
+        labels = t_targets_all.data.cpu().numpy()
+        predic = torch.argmax(t_outputs_all, -1).cpu().numpy()
+        if show_results:
+            report = metrics.classification_report(labels, predic, digits=4)
+            confusion = metrics.confusion_matrix(labels, predic)
+            return report, confusion
+
         return test_acc, f1
+
+    def _test(self, model_path):
+        # test
+        self.model.load_state_dict(torch.load(model_path))
+        self.model.eval()
+        # start_time = time.time()
+        test_report, test_confusion = self._evaluate(show_results=True)
+        logger.info("Precision, Recall and F1-Score...")
+        logger.info(test_report)
+        logger.info("Confusion Matrix...")
+        logger.info(test_confusion)
+        # time_dif = get_time_dif(start_time)
+        # logger.info("Time usage:", time_dif)
     
     def run(self, repeats=1):
         max_test_acc_overall = 0
@@ -167,13 +210,14 @@ class Instructor:
         for i in range(repeats):
             logger.info('repeat:{}'.format(i))
             # self._reset_params()
-            max_test_acc, max_f1 = self._train(max_test_acc_overall, max_f1_overall)
+            max_test_acc, max_f1, model_path = self._train(max_test_acc_overall, max_f1_overall)
             logger.info('max_test_acc: {0}, max_f1: {1}'.format(max_test_acc, max_f1))
             max_test_acc_overall = max(max_test_acc, max_test_acc_overall)
             max_f1_overall = max(max_f1, max_f1_overall)
             logger.info('#' * 60)
         logger.info('max_test_acc_overall:{}'.format(max_test_acc_overall))
         logger.info('max_f1_overall:{}'.format(max_f1_overall))
+        self._test(model_path)
 
 
 def main():
@@ -320,13 +364,14 @@ def main():
     parser.add_argument('--seed', default=0, type=int)
     parser.add_argument('--bert_dim', default=768, type=int)
     parser.add_argument('--pretrained_bert_name', default='bert-base-uncased', type=str)
-    parser.add_argument("--weight_decay", default=0.0, type=float, help="Weight deay if we apply some.")
+    parser.add_argument("--weight_decay", default=0.0, type=float, help="Weight deay if we apply some.") # 0.01
     parser.add_argument("--adam_epsilon", default=1e-8, type=float, help="Epsilon for Adam optimizer.")
     parser.add_argument('--cross_val_fold', default=5, type=int, help='k-fold cross validation')
     # parser.add_argument('--grad_clip', type=float, default=10, help='clip gradients at this value')
     parser.add_argument('--cuda', default=0, type=str)
     parser.add_argument('--transdara', default=False, type=bool)
     parser.add_argument('--attention_hops', default=5, type=int)
+    parser.add_argument('--adv_type', default=None, type=str, help='fgm, pgd')
     opt = parser.parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = opt.cuda
     opt.model_class = model_classes[opt.model_name]
@@ -344,9 +389,12 @@ def main():
     log_file = '{}-{}-{}.log'.format(opt.model_name, opt.dataset, strftime("%Y-%m-%d_%H:%M:%S", localtime()))
     logger.addHandler(logging.FileHandler("%s/%s" % ('./log', log_file)))
 
-    torch.set_printoptions(precision=None, threshold=float("inf"), edgeitems=None, linewidth=None, profile=None)
+    # torch.set_printoptions(precision=None, threshold=float("inf"), edgeitems=None, linewidth=None, profile=None)
+    start_time = time.time()
     ins = Instructor(opt)
     ins.run(opt.repeats)
+    time_dif = get_time_dif(start_time)
+    logger.info("Time usage: {}".format(time_dif))
 
 if __name__ == '__main__':
     main()
