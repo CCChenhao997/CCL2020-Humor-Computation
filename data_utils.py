@@ -26,6 +26,23 @@ def parse_data(data_path):
     return all_data
 
 
+def parse_transdata(data_path):
+    df = pd.read_csv(data_path, sep='\t', header=None, encoding='utf-8', engine='python')
+    all_data = []
+    for index, line in df.iterrows():
+        sentence_pre = line[3].lower().strip()
+        sentence_post = line[4].lower().strip()
+        try:
+            polarity = int(line[5])
+        except:
+            polarity = 0
+
+        data = {'sentence_pre': sentence_pre, 'sentence_post': sentence_post, 'polarity': polarity}
+        all_data.append(data)
+
+    return all_data
+
+
 class Tokenizer4Bert(object):
     def __init__(self, max_length, pretrained_bert_name):
         self.tokenizer = BertTokenizer.from_pretrained(pretrained_bert_name)
@@ -67,32 +84,57 @@ class Tokenizer4Bert(object):
 class BertSentenceDataset(Dataset):
     ''' PyTorch standard dataset class '''
     def __init__(self, fname, tokenizer, target_dim, opt):
-
-        parse = parse_data
         data = list()
 
-        for obj in parse(fname):
-            text_raw_indices = tokenizer.text_to_sequence(obj['sentence'])
-            text_raw_bert_indices = tokenizer.text_to_sequence("[CLS] " + obj['sentence'] + " [SEP]")
-            text_bert_indices = tokenizer.text_to_sequence("[CLS] " + obj['sentence'] + " [SEP] " + obj['speaker'] + " [SEP]")
-            speaker_indices = tokenizer.text_to_sequence(obj['speaker'])
-            speaker_len = np.sum(speaker_indices != 0)
-            bert_segments_ids = np.asarray([0] * (np.sum(text_raw_indices != 0) + 2) + [1] * (speaker_len + 1))
-            bert_segments_ids = tokenizer.pad_sequence(bert_segments_ids, 0, tokenizer.max_length)
-            polarity = obj['polarity']
+        if opt.transdara:
+            parse = parse_transdata
+            for obj in parse(fname):
+                sentence_pre_indices = tokenizer.text_to_sequence(obj['sentence_pre'])
+                sentence_post_indices = tokenizer.text_to_sequence(obj['sentence_post'])
+                sentence_post_bert_indices = tokenizer.text_to_sequence("[CLS] " + obj['sentence_post'] + " [SEP]")
+                sentence_pair_bert_indices = tokenizer.text_to_sequence("[CLS] " + obj['sentence_pre'] + " [SEP] " + obj['sentence_post'] + " [SEP]")
+                # sentence_post_len = np.sum(sentence_post_indices != 0)
+                bert_segments_ids = np.asarray([0] * (np.sum(sentence_pre_indices != 0) + 2) + [1] * (np.sum(sentence_post_indices != 0) + 1))
+                bert_segments_ids = tokenizer.pad_sequence(bert_segments_ids, 0, tokenizer.max_length)
+                polarity = obj['polarity']
 
-            attention_mask = np.asarray([1] * np.sum(text_raw_bert_indices != 0) + [0] * (opt.max_length - np.sum(text_raw_bert_indices != 0)))
-            attention_mask_pair = np.asarray([1] * np.sum(text_bert_indices != 0) + [0] * (opt.max_length - np.sum(text_bert_indices != 0)))
-            data.append(
-                {
-                    'text_raw_bert_indices': text_raw_bert_indices,
-                    'bert_segments_ids': bert_segments_ids,
-                    'text_bert_indices': text_bert_indices,
-                    'attention_mask': attention_mask,
-                    'attention_mask_pair': attention_mask_pair,
-                    'polarity': polarity
-                }
-            )
+                attention_mask = np.asarray([1] * np.sum(sentence_post_bert_indices != 0) + [0] * (opt.max_length - np.sum(sentence_post_bert_indices != 0)))
+                attention_mask_pair = np.asarray([1] * np.sum(sentence_pair_bert_indices != 0) + [0] * (opt.max_length - np.sum(sentence_pair_bert_indices != 0)))
+                data.append(
+                    {
+                        'sentence_bert_indices': sentence_post_bert_indices,
+                        'sentence_pair_bert_indices': sentence_pair_bert_indices,
+                        'bert_segments_ids': bert_segments_ids,
+                        'attention_mask': attention_mask,
+                        'attention_mask_pair': attention_mask_pair,
+                        'polarity': polarity
+                    }
+                )
+
+        else:
+            parse = parse_data
+
+            for obj in parse(fname):
+                sentence_indices = tokenizer.text_to_sequence(obj['sentence'])
+                sentence_bert_indices = tokenizer.text_to_sequence("[CLS] " + obj['sentence'] + " [SEP]")
+                sentence_speaker_bert_indices = tokenizer.text_to_sequence("[CLS] " + obj['speaker'] + " [SEP] " + obj['sentence'] + " [SEP]")
+                speaker_indices = tokenizer.text_to_sequence(obj['speaker'])
+                bert_segments_ids = np.asarray([0] * (np.sum(speaker_indices != 0) + 2) + [1] * (np.sum(sentence_indices != 0) + 1))
+                bert_segments_ids = tokenizer.pad_sequence(bert_segments_ids, 0, tokenizer.max_length)
+                polarity = obj['polarity']
+
+                attention_mask = np.asarray([1] * np.sum(sentence_bert_indices != 0) + [0] * (opt.max_length - np.sum(sentence_bert_indices != 0)))
+                attention_mask_pair = np.asarray([1] * np.sum(sentence_speaker_bert_indices != 0) + [0] * (opt.max_length - np.sum(sentence_speaker_bert_indices != 0)))
+                data.append(
+                    {
+                        'sentence_bert_indices': sentence_bert_indices,
+                        'sentence_pair_bert_indices': sentence_speaker_bert_indices,
+                        'bert_segments_ids': bert_segments_ids,
+                        'attention_mask': attention_mask,
+                        'attention_mask_pair': attention_mask_pair,
+                        'polarity': polarity
+                    }
+                )
 
         self._data = data
     
