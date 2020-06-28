@@ -13,14 +13,14 @@ from transformers import BertModel, AutoModel, XLMRobertaModel, GPT2Model, Rober
 from transformers import AdamW
 from torch.utils.data import DataLoader, random_split, ConcatDataset
 from torch.nn.utils import clip_grad_norm_
-from loss_helper import FocalLoss
-from models.bert_sen import BERT_Sen
+from models_utils.loss_helper import FocalLoss
+from models.bert import BERT
 from models.bert_spc import BERT_SPC
 from models.bert_att import BERT_Att
+from models.bert_spc_att import BERT_SPC_Att
+from models.bert_spc_pos import BERT_SPC_Pos
 from data_utils import Tokenizer4Bert, BertSentenceDataset
 from sklearn.model_selection import StratifiedKFold, KFold
-
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -179,58 +179,107 @@ class Instructor:
 def main():
     
     model_classes = {
-        'bert_sen': BERT_Sen,
+        'bert': BERT,
         'bert_att': BERT_Att,
         'bert_spc': BERT_SPC,
+        'bert_spc_att': BERT_SPC_Att,
+        'bert_spc_pos': BERT_SPC_Pos,
     }
     
     dataset_files = {
+        # * cn-data
         'cn_fold_0': {
-            'train': './data_StratifiedKFold_666_pseudo/cn/data_fold_0/train.csv',
-            'test': './data_StratifiedKFold_666_pseudo/cn/data_fold_0/test.csv'
+            'train': './data_StratifiedKFold_666/cn/data_fold_0/train.csv',
+            'test': './data_StratifiedKFold_666/cn/data_fold_0/test.csv'
         },
         'cn_fold_1': {
-            'train': './data_StratifiedKFold_666_pseudo/cn/data_fold_1/train.csv',
-            'test': './data_StratifiedKFold_666_pseudo/cn/data_fold_1/test.csv'
+            'train': './data_StratifiedKFold_666/cn/data_fold_1/train.csv',
+            'test': './data_StratifiedKFold_666/cn/data_fold_1/test.csv'
         },
         'cn_fold_2': {
-            'train': './data_StratifiedKFold_666_pseudo/cn/data_fold_2/train.csv',
-            'test': './data_StratifiedKFold_666_pseudo/cn/data_fold_2/test.csv'
+            'train': './data_StratifiedKFold_666/cn/data_fold_2/train.csv',
+            'test': './data_StratifiedKFold_666/cn/data_fold_2/test.csv'
         },
         'cn_fold_3': {
-            'train': './data_StratifiedKFold_666_pseudo/cn/data_fold_3/train.csv',
-            'test': './data_StratifiedKFold_666_pseudo/cn/data_fold_3/test.csv'
+            'train': './data_StratifiedKFold_666/cn/data_fold_3/train.csv',
+            'test': './data_StratifiedKFold_666/cn/data_fold_3/test.csv'
         },
         'cn_fold_4': {
-            'train': './data_StratifiedKFold_666_pseudo/cn/data_fold_4/train.csv',
-            'test': './data_StratifiedKFold_666_pseudo/cn/data_fold_4/test.csv'
+            'train': './data_StratifiedKFold_666/cn/data_fold_4/train.csv',
+            'test': './data_StratifiedKFold_666/cn/data_fold_4/test.csv'
         },
+        # * en-data
         'en_fold_0': {
-            'train': './data_StratifiedKFold_666_pseudo/en/data_fold_0/train.csv',
-            'test': './data_StratifiedKFold_666_pseudo/en/data_fold_0/test.csv'
+            'train': './data_StratifiedKFold_666/en/data_fold_0/train.csv',
+            'test': './data_StratifiedKFold_666/en/data_fold_0/test.csv'
         },
         'en_fold_1': {
-            'train': './data_StratifiedKFold_666_pseudo/en/data_fold_1/train.csv',
-            'test': './data_StratifiedKFold_666_pseudo/en/data_fold_1/test.csv'
+            'train': './data_StratifiedKFold_666/en/data_fold_1/train.csv',
+            'test': './data_StratifiedKFold_666/en/data_fold_1/test.csv'
         },
         'en_fold_2': {
-            'train': './data_StratifiedKFold_666_pseudo/en/data_fold_2/train.csv',
-            'test': './data_StratifiedKFold_666_pseudo/en/data_fold_2/test.csv'
+            'train': './data_StratifiedKFold_666/en/data_fold_2/train.csv',
+            'test': './data_StratifiedKFold_666/en/data_fold_2/test.csv'
         },
         'en_fold_3': {
-            'train': './data_StratifiedKFold_666_pseudo/en/data_fold_3/train.csv',
-            'test': './data_StratifiedKFold_666_pseudo/en/data_fold_3/test.csv'
+            'train': './data_StratifiedKFold_666/en/data_fold_3/train.csv',
+            'test': './data_StratifiedKFold_666/en/data_fold_3/test.csv'
         },
         'en_fold_4': {
-            'train': './data_StratifiedKFold_666_pseudo/en/data_fold_4/train.csv',
-            'test': './data_StratifiedKFold_666_pseudo/en/data_fold_4/test.csv'
+            'train': './data_StratifiedKFold_666/en/data_fold_4/train.csv',
+            'test': './data_StratifiedKFold_666/en/data_fold_4/test.csv'
+        },
+
+        # * cn-transdata
+        'cn_trans_fold_0': {
+            'train': './transdata_StratifiedKFold_666/cn/data_fold_0/train.csv',
+            'test': './transdata_StratifiedKFold_666/cn/data_fold_0/test.csv'
+        },
+        'cn_trans_fold_1': {
+            'train': './transdata_StratifiedKFold_666/cn/data_fold_1/train.csv',
+            'test': './transdata_StratifiedKFold_666/cn/data_fold_1/test.csv'
+        },
+        'cn_trans_fold_2': {
+            'train': './transdata_StratifiedKFold_666/cn/data_fold_2/train.csv',
+            'test': './transdata_StratifiedKFold_666/cn/data_fold_2/test.csv'
+        },
+        'cn_trans_fold_3': {
+            'train': './transdata_StratifiedKFold_666/cn/data_fold_3/train.csv',
+            'test': './transdata_StratifiedKFold_666/cn/data_fold_3/test.csv'
+        },
+        'cn_trans_fold_4': {
+            'train': './transdata_StratifiedKFold_666/cn/data_fold_4/train.csv',
+            'test': './transdata_StratifiedKFold_666/cn/data_fold_4/test.csv'
+        },
+        # * en-transdata
+        'en_trans_fold_0': {
+            'train': './transdata_StratifiedKFold_666/en/data_fold_0/train.csv',
+            'test': './transdata_StratifiedKFold_666/en/data_fold_0/test.csv'
+        },
+        'en_trans_fold_1': {
+            'train': './transdata_StratifiedKFold_666/en/data_fold_1/train.csv',
+            'test': './transdata_StratifiedKFold_666/en/data_fold_1/test.csv'
+        },
+        'en_trans_fold_2': {
+            'train': './transdata_StratifiedKFold_666/en/data_fold_2/train.csv',
+            'test': './transdata_StratifiedKFold_666/en/data_fold_2/test.csv'
+        },
+        'en_trans_fold_3': {
+            'train': './transdata_StratifiedKFold_666/en/data_fold_3/train.csv',
+            'test': './transdata_StratifiedKFold_666/en/data_fold_3/test.csv'
+        },
+        'en_trans_fold_4': {
+            'train': './transdata_StratifiedKFold_666/en/data_fold_4/train.csv',
+            'test': './transdata_StratifiedKFold_666/en/data_fold_4/test.csv'
         }
     }
     
     input_colses = {
-        'bert_sen': ['text_raw_bert_indices', 'attention_mask'],
-        'bert_att': ['text_raw_bert_indices', 'attention_mask'],
-        'bert_spc': ['text_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
+        'bert': ['sentence_bert_indices', 'attention_mask'],
+        'bert_att': ['sentence_bert_indices', 'attention_mask'],
+        'bert_spc': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
+        'bert_spc_att': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
+        'bert_spc_pos': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
     }
     
     initializers = {
@@ -262,8 +311,8 @@ def main():
     parser.add_argument('--batch_size', default=16, type=int)
     parser.add_argument('--log_step', default=5, type=int)
     # parser.add_argument('--embed_dim', default=300, type=int)
-    # parser.add_argument('--hidden_dim', default=200, type=int)
-    # parser.add_argument('--position_dim', default=100, type=int)
+    parser.add_argument('--hidden_dim', default=200, type=int)
+    parser.add_argument('--position_dim', default=100, type=int)
     parser.add_argument('--polarities_dim', default=2, type=int, help='2')
     parser.add_argument('--max_length', default=80, type=int)
     parser.add_argument('--device', default=None, type=str, help='cpu, cuda')
@@ -275,8 +324,11 @@ def main():
     parser.add_argument("--adam_epsilon", default=1e-8, type=float, help="Epsilon for Adam optimizer.")
     parser.add_argument('--cross_val_fold', default=5, type=int, help='k-fold cross validation')
     # parser.add_argument('--grad_clip', type=float, default=10, help='clip gradients at this value')
+    parser.add_argument('--cuda', default=0, type=str)
+    parser.add_argument('--transdara', default=False, type=bool)
+    parser.add_argument('--attention_hops', default=5, type=int)
     opt = parser.parse_args()
-    	
+    os.environ["CUDA_VISIBLE_DEVICES"] = opt.cuda
     opt.model_class = model_classes[opt.model_name]
     opt.dataset_file = dataset_files[opt.dataset]
     opt.inputs_cols = input_colses[opt.model_name]
@@ -298,31 +350,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-    # def run(self, repeats=1):
-    #     valset_len = len(self.trainset) // self.opt.cross_val_fold
-    #     splitedsets = random_split(self.trainset, tuple([valset_len] * (self.opt.cross_val_fold - 1) + [len(self.trainset) - valset_len * (self.opt.cross_val_fold - 1)]))
-    #     all_test_acc, all_test_f1 = [], []
-    #     for fid in range(self.opt.cross_val_fold):
-    #         logger.info('fold : {}'.format(fid))
-    #         logger.info('*' * 60)
-    #         max_test_acc_overall = 0
-    #         max_f1_overall = 0
-    #         trainset = ConcatDataset([x for i, x in enumerate(splitedsets) if i != fid])
-    #         valset = splitedsets[fid]
-    #         self.train_dataloader = DataLoader(dataset=trainset, batch_size=self.opt.batch_size, shuffle=True)
-    #         self.test_dataloader = DataLoader(dataset=valset, batch_size=self.opt.batch_size, shuffle=False)
-    #         self._reset_params()
-    #         max_test_acc, max_f1 = self._train(max_test_acc_overall, max_f1_overall, fid)
-    #         all_test_acc.append(max_test_acc)
-    #         all_test_f1.append(max_f1)
-    #         logger.info('{0}: max_test_acc: {1}, max_f1: {2}'.format(fid, max_test_acc, max_f1))
-    #         max_test_acc_overall = max(max_test_acc, max_test_acc_overall)
-    #         max_f1_overall = max(max_f1, max_f1_overall)
-    #         logger.info('#' * 60)
-    #     logger.info('max_test_acc_overall:{}'.format(max_test_acc_overall))
-    #     logger.info('max_f1_overall:{}'.format(max_f1_overall))
-    #     mean_test_acc, mean_test_f1 = np.mean(all_test_acc), np.mean(all_test_f1)
-    #     logger.info('>' * 60)
-    #     logger.info('>>> mean_test_acc: {:.4f}, mean_test_f1: {:.4f}'.format(mean_test_acc, mean_test_f1))
