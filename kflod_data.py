@@ -9,7 +9,7 @@ def generate_data(random_state=666, is_pse_label=True, dataset='en'):
 
     for fold, (train_index, dev_index) in enumerate(skf.split(X, y)):
         print(fold, "TRAIN:", train_index, "TEST:", dev_index)
-        DATA_DIR = "./data_StratifiedKFold_{}_pseudo/{}/data_fold_{}/".format(random_state, dataset, fold)
+        DATA_DIR = "./transdata_StratifiedKFold_{}/{}/data_fold_{}/".format(random_state, dataset, fold)
         if not os.path.exists(DATA_DIR):
             os.makedirs(DATA_DIR)
         tmp_train_df = train_df.iloc[train_index]
@@ -27,11 +27,13 @@ def generate_data(random_state=666, is_pse_label=True, dataset='en'):
 
 
 if __name__=="__main__":
-    dataset = 'cn'
-    path = './data/pseudo/{}_total_pseudo.csv'.format(dataset)
+    dataset = 'en'
+    # path = './data/pseudo/{}_total_pseudo.csv'.format(dataset)
+    path =  './data/transform/{}_total.csv'.format(dataset)
     # train_df = pd.read_csv('data/raw/cn_train.csv', encoding='utf-8')
     train_df = pd.read_csv(path, encoding='utf-8')
-    train_df = train_df[['Dialogue_id', 'Speaker', 'Sentence', 'Label']]
+    # train_df = train_df[['Dialogue_id', 'Speaker', 'Sentence', 'Label']]
+    train_df = train_df[['Dialogue_id', 'Speaker1', 'Speaker2', 'Sentence1', 'Sentence2', 'Label']]
     X = np.array(train_df.index)
     y = train_df.loc[:, 'Label'].to_numpy()
 
