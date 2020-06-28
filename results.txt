@@ -1,0 +1,36 @@
+# dataset = en
+
+# model = bert_spc.py & bert-base-uncased
+
+--seed 1000 --learning_rate 2e-5 --num_epoch 3 --dropout 0.5
+f1: 0.6552/0.6627/0.6703/0.6753/0.6711
+
+--seed 1000 --learning_rate 1e-5 --num_epoch 3 --dropout 0.1
+acc/f1: 0.7759/0.6612  0.7846/0.6626  0.7791/0.6640  0.7904/0.6731  0.7911/0.6859
+
+
+# dataset = cn
+
+# model = bert_spc.py & ERNIE 1.0
+
+--seed 1000 --learning_rate 2e-5 --num_epoch 3 --dropout 0.5
+f1: 0.6540/0.6440/0.6376/0.6434/0.6493
+
+--seed 1000 --learning_rate 2e-5 --num_epoch 3 --dropout 0.1
+acc/f1: 0.7436/0.6560  0.7405/0.6474  0.7282/0.6340  0.7325/0.6393  0.7360/0.6512
+
+
+# 其他预训练模型的效果参考
+# dataset = cn
+bert_spc.py & roberta_wwm_large_pair  f1: 0.5415
+bert_sen.py & roberta_wwm_large_ext   f1: 0.6347
+bert_sen.py & roberta_wwm_ext         f1: 0.6382
+
+# 记录
+在bert_spc上加attention不如在单句的bert上加attention效果好，可能是因为bert_spc中的人名在attention的时候相当于噪声。
+
+# TODO
+加权Acc计算
+混淆矩阵
+数据增强
+文本对抗
