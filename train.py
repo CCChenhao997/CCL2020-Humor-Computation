@@ -12,10 +12,12 @@ from transformers import AdamW
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torch.nn.utils import clip_grad_norm_
-from loss_helper import FocalLoss
-from models.bert_sen import BERT_Sen
+from models_utils.loss_helper import FocalLoss
+from models.bert import BERT
 from models.bert_spc import BERT_SPC
 from models.bert_att import BERT_Att
+from models.bert_spc_att import BERT_SPC_Att
+from models.bert_spc_pos import BERT_SPC_Pos
 from data_utils import Tokenizer4Bert, BertSentenceDataset
 import logging
 import sys
@@ -204,9 +206,11 @@ class Instructor:
 def main():
     
     model_classes = {
-        'bert_sen': BERT_Sen,
+        'bert': BERT,
         'bert_att': BERT_Att,
         'bert_spc': BERT_SPC,
+        'bert_spc_att': BERT_SPC_Att,
+        'bert_spc_pos': BERT_SPC_Pos,
     }
     
     dataset_files = {
@@ -221,9 +225,11 @@ def main():
     }
     
     input_colses = {
-        'bert_sen': ['text_raw_bert_indices', 'attention_mask'],
-        'bert_att': ['text_raw_bert_indices', 'attention_mask'],
-        'bert_spc': ['text_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
+        'bert': ['sentence_bert_indices', 'attention_mask'],
+        'bert_att': ['sentence_bert_indices', 'attention_mask'],
+        'bert_spc': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
+        'bert_spc_att': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
+        'bert_spc_pos': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
     }
     
     initializers = {
@@ -248,15 +254,15 @@ def main():
     parser.add_argument('--dataset', default='cn', type=str, help=', '.join(dataset_files.keys()))
     parser.add_argument('--optimizer', default='adam', type=str, help=', '.join(optimizers.keys()))
     parser.add_argument('--initializer', default='xavier_uniform_', type=str, help=', '.join(initializers.keys()))
-    parser.add_argument('--learning_rate', default=0.002, type=float)    # 1e-3
+    parser.add_argument('--learning_rate', default=2e-5, type=float)
     parser.add_argument('--dropout', default=0.5, type=float)
-    parser.add_argument('--l2reg', default=1e-4, type=float)    # 1e-5
+    parser.add_argument('--l2reg', default=1e-5, type=float)    # 1e-5
     parser.add_argument('--num_epoch', default=20, type=int)
     parser.add_argument('--batch_size', default=16, type=int)
     parser.add_argument('--log_step', default=5, type=int)
     # parser.add_argument('--embed_dim', default=300, type=int)
-    # parser.add_argument('--hidden_dim', default=200, type=int)
-    # parser.add_argument('--position_dim', default=100, type=int)
+    parser.add_argument('--hidden_dim', default=200, type=int)
+    parser.add_argument('--position_dim', default=100, type=int)
     parser.add_argument('--polarities_dim', default=2, type=int, help='2')
     parser.add_argument('--max_length', default=80, type=int)
     parser.add_argument('--device', default=None, type=str, help='cpu, cuda')
@@ -266,10 +272,12 @@ def main():
     parser.add_argument('--pretrained_bert_name', default='bert-base-uncased', type=str)
     parser.add_argument("--weight_decay", default=0.0, type=float, help="Weight deay if we apply some.")
     parser.add_argument("--adam_epsilon", default=1e-8, type=float, help="Epsilon for Adam optimizer.")
-
     # parser.add_argument('--grad_clip', type=float, default=10, help='clip gradients at this value')
+    parser.add_argument('--cuda', default=0, type=str)
+    parser.add_argument('--transdara', default=False, type=bool)
+    parser.add_argument('--attention_hops', default=5, type=int)
     opt = parser.parse_args()
-    	
+    os.environ["CUDA_VISIBLE_DEVICES"] = opt.cuda
     opt.model_class = model_classes[opt.model_name]
     opt.dataset_file = dataset_files[opt.dataset]
     opt.inputs_cols = input_colses[opt.model_name]
