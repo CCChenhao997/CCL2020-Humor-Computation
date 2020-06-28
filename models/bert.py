@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 
 
-class BERT_SPC(nn.Module):
+class BERT(nn.Module):
     def __init__(self, bert, opt):
-        super(BERT_SPC, self).__init__()
+        super(BERT, self).__init__()
         self.bert = bert
         self.dropout = nn.Dropout(opt.dropout)
         # self.dense = nn.Linear(opt.bert_dim, opt.polarities_dim)
@@ -13,8 +13,8 @@ class BERT_SPC(nn.Module):
         self.dense = nn.Sequential(*layers)
 
     def forward(self, inputs):
-        text_bert_indices, bert_segments_ids, attention_mask = inputs[0], inputs[1], inputs[2]
-        _, pooled_output = self.bert(text_bert_indices, attention_mask=attention_mask, token_type_ids=bert_segments_ids)
+        text_bert_indices, attention_mask = inputs[0], inputs[1]
+        _, pooled_output = self.bert(text_bert_indices, attention_mask=attention_mask)
         pooled_output = self.dropout(pooled_output)
         logits = self.dense(pooled_output)
         return logits
