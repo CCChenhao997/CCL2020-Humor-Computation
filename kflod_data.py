@@ -16,7 +16,7 @@ def generate_data(random_state=666, is_pse_label=True, dataset='en'):
         tmp_dev_df = train_df.iloc[dev_index]
         
         if is_pse_label:
-            pse_dir = "data_pse_{}/".format(i)
+            pse_dir = "data_pse_{}/".format(fold)
             pse_df = pd.read_csv(pse_dir+'train.csv')
 
             tmp_train_df = pd.concat([tmp_train_df, pse_df],ignore_index=True,sort=False)
