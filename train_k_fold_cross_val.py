@@ -10,7 +10,7 @@ import time
 from time import strftime, localtime
 from sklearn import metrics
 import numpy as np
-from transformers import BertModel, AutoModel, XLMRobertaModel, GPT2Model, RobertaModel
+from transformers import BertModel, AutoModel, RobertaModel, AlbertModel
 from transformers import AdamW
 from torch.utils.data import DataLoader, random_split, ConcatDataset
 from torch.nn.utils import clip_grad_norm_
@@ -43,7 +43,8 @@ class Instructor:
         self.opt = opt
         tokenizer = Tokenizer4Bert(opt.max_length, opt.pretrained_bert_name)
         bert_model = BertModel.from_pretrained(opt.pretrained_bert_name)
-        self.pretrained_bert_state_dict = bert_model.state_dict()
+        # bert_model = AlbertModel.from_pretrained(opt.pretrained_bert_name)
+        # self.pretrained_bert_state_dict = bert_model.state_dict()
         self.model = opt.model_class(bert_model, opt).to(opt.device)
         trainset = BertSentenceDataset(opt.dataset_file['train'], tokenizer, target_dim=self.opt.polarities_dim, opt=opt)
         testset = BertSentenceDataset(opt.dataset_file['test'], tokenizer, target_dim=self.opt.polarities_dim, opt=opt)
@@ -108,6 +109,9 @@ class Instructor:
         # 对抗训练
         if self.opt.adv_type == 'fgm':
             fgm = FGM(self.model)
+        elif self.opt.adv_type == 'pgd':
+            pgd = PGD(self.model)
+            K = 3
 
         # criterion = nn.CrossEntropyLoss()
         criterion = FocalLoss(num_class=2, alpha=0.25, gamma=2, smooth=0.2)
@@ -141,6 +145,19 @@ class Instructor:
                     loss_adv = criterion(outputs, targets)
                     loss_adv.backward()
                     fgm.restore()
+
+                if self.opt.adv_type == 'pgd':
+                    pgd.backup_grad()
+                    for t in range(K):
+                        pgd.attack(is_first_attack=(t==0)) # 在embedding上添加对抗扰动, first attack时备份param.data
+                        if t != K-1:
+                            self.model.zero_grad()
+                        else:
+                            pgd.restore_grad()
+                        outputs = self.model(inputs)
+                        loss_adv = criterion(outputs, targets)
+                        loss_adv.backward()              # 反向传播，并在正常的grad基础上，累加对抗训练的梯度
+                    pgd.restore()                        # 恢复embedding参数
 
                 optimizer.step()
                 
