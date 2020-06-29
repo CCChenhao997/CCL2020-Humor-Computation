@@ -15,26 +15,30 @@
 # python train_k_fold_cross_val.py --model bert_spc --dataset en_fold_4 --seed 1000 --learning_rate 1e-5 --num_epoch 3 --dropout 0.2 --cuda 2
 
 # 0.7938/0.6656 num_epoch=4
-# python train_k_fold_cross_val.py --model bert_spc --dataset en_fold_4 --seed 1000 --learning_rate 1e-5 --num_epoch 4 --dropout 0.2 --cuda 3
+python train_k_fold_cross_val.py --model bert_spc --dataset en_fold_4 --seed 1000 --learning_rate 1e-5 --num_epoch 4 --dropout 0.2 --cuda 3
 
 # 除了bert之外的参数进行了初始化
 # 0.7878/0.6650 结果竟然还下降了
 # python train_k_fold_cross_val.py --model bert_spc --dataset en_fold_4 --seed 1000 --learning_rate 1e-5 --num_epoch 3 --dropout 0.2 --cuda 2
 
 ## * adv 对抗效果明显，但epoch数要增加
-# 0.7958/0.6625  num_epoch=3
+# 0.7958/0.6625  num_epoch=3  adv_type == 'fgm'
 # python train_k_fold_cross_val.py --model bert_spc --dataset en_fold_4 --adv_type fgm --seed 1000 --learning_rate 1e-5 --num_epoch 3 --dropout 0.2 --cuda 2
-# 0.7958/0.6814  num_epoch=4
+# 0.7958/0.6814  num_epoch=4  adv_type == 'fgm'
 # python train_k_fold_cross_val.py --model bert_spc --dataset en_fold_4 --adv_type fgm --seed 1000 --learning_rate 1e-5 --num_epoch 4 --dropout 0.2 --cuda 2
+# 0.7938/0.6613  num_epoch=4  0.7938/0.6683  num_epoch=6  adv_type == 'pgd'
+# python train_k_fold_cross_val.py --model bert_spc --dataset en_fold_4 --adv_type pgd --seed 1000 --learning_rate 1e-5 --num_epoch 6 --dropout 0.2 --cuda 2
 
 
 
+## * 其他模型
 
-# 0.7705/0.6439
+# bert-large-uncased 0.7705/0.6439
 # python train_k_fold_cross_val.py --model bert_att --dataset en_fold_0 --seed 1000 --learning_rate 1e-5 --num_epoch 3 --dropout 0.1 --cuda 3 --pretrained_bert_name bert-large-uncased --bert_dim 1024
 
-# # -/0.66+
-# python train_k_fold_cross_val.py --model bert_att --dataset en_fold_0 --seed 1000 --learning_rate 1e-5 --num_epoch 3 --dropout 0.1 --cuda 3
+# Albert
+# python train_k_fold_cross_val.py --model bert_spc --dataset en_fold_4 --seed 1000 --learning_rate 1e-5 --num_epoch 4 --dropout 0.2 --cuda 3 --pretrained_bert_name albert-xlarge-v2 --bert_dim 2048
+
 
 # * transdata
 
