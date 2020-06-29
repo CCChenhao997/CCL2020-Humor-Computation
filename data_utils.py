@@ -3,11 +3,18 @@ import nltk
 import re
 import json
 import pickle
+import time
+from datetime import timedelta
 import numpy as np
 import pandas as pd
-from transformers import BertTokenizer, AutoTokenizer, XLMRobertaTokenizer, GPT2Tokenizer, RobertaTokenizer
+from transformers import BertTokenizer, AutoTokenizer, RobertaTokenizer, AlbertTokenizer
 from torch.utils.data import Dataset
 
+def get_time_dif(start_time):
+    """获取已使用时间"""
+    end_time = time.time()
+    time_dif = end_time - start_time
+    return timedelta(seconds=int(round(time_dif)))
 
 def parse_data(data_path):
     df = pd.read_csv(data_path, sep='\t', header=None, encoding='utf-8', engine='python')
@@ -24,7 +31,6 @@ def parse_data(data_path):
         all_data.append(data)
 
     return all_data
-
 
 def parse_transdata(data_path):
     df = pd.read_csv(data_path, sep='\t', header=None, encoding='utf-8', engine='python')
@@ -46,6 +52,7 @@ def parse_transdata(data_path):
 class Tokenizer4Bert(object):
     def __init__(self, max_length, pretrained_bert_name):
         self.tokenizer = BertTokenizer.from_pretrained(pretrained_bert_name)
+        # self.tokenizer = AlbertTokenizer.from_pretrained(pretrained_bert_name)
         # self.tokenizer = RobertaTokenizer.from_pretrained(pretrained_bert_name)
         # self.tokenizer = AutoTokenizer.from_pretrained(pretrained_bert_name)
         self.max_length = max_length
