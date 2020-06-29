@@ -29,8 +29,18 @@ bert_sen.py & roberta_wwm_ext         f1: 0.6382
 # 记录
 在bert_spc上加attention不如在单句的bert上加attention效果好，可能是因为bert_spc中的人名在attention的时候相当于噪声。
 
-# TODO
-加权Acc计算
-混淆矩阵
-数据增强
+##  TODO
+五折+投票+伪标签
 文本对抗
+句子对（效果不稳定）
+
+加权Acc计算
+数据增强-中文/英文
+speaker词典，去掉低频
+改模型
+多模型投票
+优化代码，所有流程自动化处理
+分层学习率
+focalloss参数调优
+
+竞赛 github 方案/trick
