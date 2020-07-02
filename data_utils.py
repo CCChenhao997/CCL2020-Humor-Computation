@@ -20,6 +20,7 @@ def parse_data(data_path):
     df = pd.read_csv(data_path, sep='\t', header=None, encoding='utf-8', engine='python')
     all_data = []
     for index, line in df.iterrows():
+        dialogue_id = int(line[0])
         speaker = line[1].lower().strip()
         sentence = line[2].lower().strip()
         try:
@@ -27,7 +28,7 @@ def parse_data(data_path):
         except:
             polarity = 0
 
-        data = {'speaker': speaker, 'sentence': sentence, 'polarity': polarity}
+        data = {'dialogue_id': dialogue_id, 'speaker': speaker, 'sentence': sentence, 'polarity': polarity}
         all_data.append(data)
 
     return all_data
@@ -36,6 +37,7 @@ def parse_transdata(data_path):
     df = pd.read_csv(data_path, sep='\t', header=None, encoding='utf-8', engine='python')
     all_data = []
     for index, line in df.iterrows():
+        dialogue_id = int(line[0])
         sentence_pre = line[3].lower().strip()
         sentence_post = line[4].lower().strip()
         try:
@@ -43,7 +45,7 @@ def parse_transdata(data_path):
         except:
             polarity = 0
 
-        data = {'sentence_pre': sentence_pre, 'sentence_post': sentence_post, 'polarity': polarity}
+        data = {'dialogue_id': dialogue_id, 'sentence_pre': sentence_pre, 'sentence_post': sentence_post, 'polarity': polarity}
         all_data.append(data)
 
     return all_data
@@ -104,6 +106,7 @@ class BertSentenceDataset(Dataset):
                 bert_segments_ids = np.asarray([0] * (np.sum(sentence_pre_indices != 0) + 2) + [1] * (np.sum(sentence_post_indices != 0) + 1))
                 bert_segments_ids = tokenizer.pad_sequence(bert_segments_ids, 0, tokenizer.max_length)
                 polarity = obj['polarity']
+                dialogue_id = obj['dialogue_id']
 
                 attention_mask = np.asarray([1] * np.sum(sentence_post_bert_indices != 0) + [0] * (opt.max_length - np.sum(sentence_post_bert_indices != 0)))
                 attention_mask_pair = np.asarray([1] * np.sum(sentence_pair_bert_indices != 0) + [0] * (opt.max_length - np.sum(sentence_pair_bert_indices != 0)))
@@ -129,6 +132,7 @@ class BertSentenceDataset(Dataset):
                 bert_segments_ids = np.asarray([0] * (np.sum(speaker_indices != 0) + 2) + [1] * (np.sum(sentence_indices != 0) + 1))
                 bert_segments_ids = tokenizer.pad_sequence(bert_segments_ids, 0, tokenizer.max_length)
                 polarity = obj['polarity']
+                dialogue_id = obj['dialogue_id']
 
                 attention_mask = np.asarray([1] * np.sum(sentence_bert_indices != 0) + [0] * (opt.max_length - np.sum(sentence_bert_indices != 0)))
                 attention_mask_pair = np.asarray([1] * np.sum(sentence_speaker_bert_indices != 0) + [0] * (opt.max_length - np.sum(sentence_speaker_bert_indices != 0)))
@@ -139,7 +143,8 @@ class BertSentenceDataset(Dataset):
                         'bert_segments_ids': bert_segments_ids,
                         'attention_mask': attention_mask,
                         'attention_mask_pair': attention_mask_pair,
-                        'polarity': polarity
+                        'polarity': polarity,
+                        'dialogue_id': dialogue_id
                     }
                 )
 
