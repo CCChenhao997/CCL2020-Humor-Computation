@@ -23,6 +23,7 @@ from models.bert_spc_att import BERT_SPC_Att
 from models.bert_spc_pos import BERT_SPC_Pos
 from data_utils import Tokenizer4Bert, BertSentenceDataset, get_time_dif
 from sklearn.model_selection import StratifiedKFold, KFold
+from collections import defaultdict
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -105,7 +106,7 @@ class Instructor:
         #     optimizer, warmup_steps=args.warmup_steps, t_total=t_total)
         return optimizer
     
-    def _train(self, max_test_acc_overall=0, max_f1_overall=0):
+    def _train(self, max_test_acc_overall=0, max_w_acc_overall=0, max_f1_overall=0, max_score_overall=0):
         # 对抗训练
         if self.opt.adv_type == 'fgm':
             fgm = FGM(self.model)
@@ -121,7 +122,9 @@ class Instructor:
             _params = filter(lambda p: p.requires_grad, self.model.parameters())
             optimizer = self.opt.optimizer(_params, lr=self.opt.learning_rate, weight_decay=self.opt.l2reg)
         max_test_acc = 0
+        max_w_acc = 0
         max_f1 = 0
+        max_score = 0
         global_step = 0
         for epoch in range(self.opt.num_epoch):
             logger.info('>' * 60)
@@ -165,28 +168,47 @@ class Instructor:
                     n_correct += (torch.argmax(outputs, -1) == targets).sum().item()
                     n_total += len(outputs)
                     train_acc = n_correct / n_total
-                    test_acc, f1 = self._evaluate()
+                    test_acc, w_acc, f1 = self._evaluate()
+                    score = w_acc + f1
+
                     if test_acc > max_test_acc:
                         max_test_acc = test_acc
+
+                    if w_acc > max_w_acc:
+                        max_w_acc = w_acc
+
                     if f1 > max_f1:
                         max_f1 = f1
-                        if f1 > max_f1_overall:
+                        # if f1 > max_f1_overall:
+                        #     if not os.path.exists('state_dict'):
+                        #         os.mkdir('state_dict')
+                        #     path = './state_dict/{0}_{1}_f1_{2:.4f}'.format(self.opt.model_name, self.opt.dataset, f1)
+                        #     torch.save(self.model.state_dict(), path)
+                        #     logger.info('>> saved: {}'.format(path))
+                    
+                    if score > max_score:
+                        max_score = score
+                        if score > max_score_overall:
                             if not os.path.exists('state_dict'):
                                 os.mkdir('state_dict')
-                            path = './state_dict/{0}_{1}_f1_{2:.4f}'.format(self.opt.model_name, self.opt.dataset, f1)
-                            torch.save(self.model.state_dict(), path)
-                            logger.info('>> saved: {}'.format(path))
+                            path = './state_dict/{0}_{1}_score_{2:.4f}'.format(self.opt.model_name, self.opt.dataset, score)
+                            # torch.save(self.model.state_dict(), path)
+                            # logger.info('>> saved: {}'.format(path))
+                            logger.info('>> The {0} has been promoted on {1} with score {2:.4f}'.format(self.opt.model_name, self.opt.dataset, score))
 
-                    logger.info('loss: {:.4f}, acc: {:.4f}, test_acc: {:.4f}, f1: {:.4f}'.format(loss.item(), train_acc, test_acc, f1))
-        return max_test_acc, max_f1, path
+                    logger.info('loss: {:.4f}, acc: {:.4f}, test_acc: {:.4f}, w_acc: {:.4f}, f1: {:.4f}, score: {:.4f}'\
+                                .format(loss.item(), train_acc, test_acc, w_acc, f1, score))
+
+        return max_test_acc, max_w_acc, max_f1, max_score, path
     
     def _evaluate(self, show_results=False):
         # switch model to evaluation mode
         self.model.eval()
         n_test_correct, n_test_total = 0, 0
-        t_targets_all, t_outputs_all = None, None
+        t_targets_all, t_outputs_all, ids_all = None, None, None
         with torch.no_grad():
             for t_batch, t_sample_batched in enumerate(self.test_dataloader):
+                ids = t_sample_batched['dialogue_id'].to(self.opt.device)
                 t_inputs = [t_sample_batched[col].to(self.opt.device) for col in self.opt.inputs_cols]
                 t_targets = t_sample_batched['polarity'].to(self.opt.device)
                 t_outputs = self.model(t_inputs)
@@ -194,19 +216,46 @@ class Instructor:
                 n_test_correct += (torch.argmax(t_outputs, -1) == t_targets).sum().item()
                 n_test_total += len(t_outputs)
                 
+                ids_all = torch.cat((ids_all, ids), dim = 0) if ids_all is not None else ids
                 t_targets_all = torch.cat((t_targets_all, t_targets), dim=0) if t_targets_all is not None else t_targets
                 t_outputs_all = torch.cat((t_outputs_all, t_outputs), dim=0) if t_outputs_all is not None else t_outputs
         test_acc = n_test_correct / n_test_total
         f1 = metrics.f1_score(t_targets_all.cpu(), torch.argmax(t_outputs_all, -1).cpu(), labels=[0, 1], average='macro')
 
+        dialog_id = ids_all.data.cpu().numpy()
         labels = t_targets_all.data.cpu().numpy()
         predic = torch.argmax(t_outputs_all, -1).cpu().numpy()
+
+        w_acc = self.weighted_acc(dialog_id, labels, predic)
+        
         if show_results:
             report = metrics.classification_report(labels, predic, digits=4)
             confusion = metrics.confusion_matrix(labels, predic)
             return report, confusion
 
-        return test_acc, f1
+        return test_acc, w_acc, f1
+
+    def weighted_acc(self, ids, labels, predict_labels):
+        # compute the weighted_accuracy
+        ids, labels, predict_labels = ids.tolist(), labels.tolist(), predict_labels.tolist()
+        n_test_total = len(ids)
+        acc_dict = defaultdict(defaultdict)
+        total_acc = 0
+        for idx, label, predict_label in list(zip(ids, labels, predict_labels)):
+            if idx not in acc_dict:
+                acc_dict[idx]['total'] = 1
+                acc_dict[idx]['true'] = 0
+            else:
+                acc_dict[idx]['total'] += 1
+            if label == predict_label:
+                acc_dict[idx]['true'] += 1
+        for i, idx in acc_dict.items():
+            acc_dict[i]['acc'] = idx['true'] / idx['total']
+            total_acc += acc_dict[i]['acc']
+            # print(idx['true'] / idx['total'])
+        total_acc /= len(acc_dict)
+        return total_acc
+
 
     def _test(self, model_path):
         # test
@@ -223,17 +272,26 @@ class Instructor:
     
     def run(self, repeats=1):
         max_test_acc_overall = 0
+        max_w_acc_overall = 0
         max_f1_overall = 0
+        max_score_overall = 0
         for i in range(repeats):
             logger.info('repeat:{}'.format(i))
             # self._reset_params()
-            max_test_acc, max_f1, model_path = self._train(max_test_acc_overall, max_f1_overall)
-            logger.info('max_test_acc: {0}, max_f1: {1}'.format(max_test_acc, max_f1))
+            max_test_acc, max_w_acc, max_f1, max_score, model_path = self._train(max_test_acc_overall, max_w_acc_overall, max_f1_overall, max_score_overall)
+            logger.info('max_test_acc: {0:.4f}, max_w_acc: {1:.4f}, max_f1: {2:.4f}, max_score: {3:.4f}'.format(max_test_acc, max_w_acc, max_f1, max_score))
             max_test_acc_overall = max(max_test_acc, max_test_acc_overall)
+            max_w_acc_overall = max(max_w_acc, max_w_acc_overall)
             max_f1_overall = max(max_f1, max_f1_overall)
-            logger.info('#' * 60)
-        logger.info('max_test_acc_overall:{}'.format(max_test_acc_overall))
-        logger.info('max_f1_overall:{}'.format(max_f1_overall))
+            max_score_overall = max(max_score, max_score_overall)
+            # * 模型存储
+            torch.save(self.model.state_dict(), model_path)
+            logger.info('>> saved: {}'.format(model_path))
+            logger.info('#' * 100)
+        logger.info('max_test_acc_overall:{:.4f}'.format(max_test_acc_overall))
+        logger.info('max_w_acc_overall:{:.4f}'.format(max_test_acc_overall))
+        logger.info('max_f1_overall:{:.4f}'.format(max_f1_overall))
+        logger.info('max_score_overall:{:.4f}'.format(max_score_overall))
         self._test(model_path)
 
 
@@ -415,3 +473,31 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+    # def run(self, repeats=1):
+    #     valset_len = len(self.trainset) // self.opt.cross_val_fold
+    #     splitedsets = random_split(self.trainset, tuple([valset_len] * (self.opt.cross_val_fold - 1) + [len(self.trainset) - valset_len * (self.opt.cross_val_fold - 1)]))
+    #     all_test_acc, all_test_f1 = [], []
+    #     for fid in range(self.opt.cross_val_fold):
+    #         logger.info('fold : {}'.format(fid))
+    #         logger.info('*' * 60)
+    #         max_test_acc_overall = 0
+    #         max_f1_overall = 0
+    #         trainset = ConcatDataset([x for i, x in enumerate(splitedsets) if i != fid])
+    #         valset = splitedsets[fid]
+    #         self.train_dataloader = DataLoader(dataset=trainset, batch_size=self.opt.batch_size, shuffle=True)
+    #         self.test_dataloader = DataLoader(dataset=valset, batch_size=self.opt.batch_size, shuffle=False)
+    #         self._reset_params()
+    #         max_test_acc, max_f1 = self._train(max_test_acc_overall, max_f1_overall, fid)
+    #         all_test_acc.append(max_test_acc)
+    #         all_test_f1.append(max_f1)
+    #         logger.info('{0}: max_test_acc: {1}, max_f1: {2}'.format(fid, max_test_acc, max_f1))
+    #         max_test_acc_overall = max(max_test_acc, max_test_acc_overall)
+    #         max_f1_overall = max(max_f1, max_f1_overall)
+    #         logger.info('#' * 60)
+    #     logger.info('max_test_acc_overall:{}'.format(max_test_acc_overall))
+    #     logger.info('max_f1_overall:{}'.format(max_f1_overall))
+    #     mean_test_acc, mean_test_f1 = np.mean(all_test_acc), np.mean(all_test_f1)
+    #     logger.info('>' * 60)
+    #     logger.info('>>> mean_test_acc: {:.4f}, mean_test_f1: {:.4f}'.format(mean_test_acc, mean_test_f1))
