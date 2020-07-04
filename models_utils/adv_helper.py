@@ -1,6 +1,5 @@
 import torch
 
-
 class FGM():
     def __init__(self, model):
         self.model = model
@@ -12,7 +11,7 @@ class FGM():
             if param.requires_grad and emb_name in name:
                 self.backup[name] = param.data.clone()
                 norm = torch.norm(param.grad)
-                if norm != 0:
+                if norm != 0 and not torch.isnan(norm):
                     r_at = epsilon * param.grad / norm
                     param.data.add_(r_at)
 
