@@ -43,7 +43,7 @@ class Instructor:
     def __init__(self, opt):
         self.opt = opt
         tokenizer = Tokenizer4Bert(opt.max_length, opt.pretrained_bert_name)
-        bert_model = BertModel.from_pretrained(opt.pretrained_bert_name)
+        bert_model = BertModel.from_pretrained(opt.pretrained_bert_name, output_hidden_states=True)
         # bert_model = AlbertModel.from_pretrained(opt.pretrained_bert_name)
         # self.pretrained_bert_state_dict = bert_model.state_dict()
         self.model = opt.model_class(bert_model, opt).to(opt.device)
@@ -106,7 +106,7 @@ class Instructor:
         #     optimizer, warmup_steps=args.warmup_steps, t_total=t_total)
         return optimizer
     
-    def _train(self, max_test_acc_overall=0, max_w_acc_overall=0, max_f1_overall=0, max_score_overall=0):
+    def _train(self, model, optimizer, max_test_acc_overall=0, max_w_acc_overall=0, max_f1_overall=0, max_score_overall=0):
         # 对抗训练
         if self.opt.adv_type == 'fgm':
             fgm = FGM(self.model)
@@ -121,6 +121,14 @@ class Instructor:
         else:
             _params = filter(lambda p: p.requires_grad, self.model.parameters())
             optimizer = self.opt.optimizer(_params, lr=self.opt.learning_rate, weight_decay=self.opt.l2reg)
+
+        if self.opt.fp16:
+            try:
+                from apex import amp
+            except ImportError:
+                raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
+            self.model, optimizer = amp.initialize(self.model, optimizer, opt_level=self.opt.fp16_opt_level)
+
         max_test_acc = 0
         max_w_acc = 0
         max_f1 = 0
@@ -140,7 +148,14 @@ class Instructor:
                 targets = sample_batched['polarity'].to(self.opt.device)
 
                 loss = criterion(outputs, targets) 
-                loss.backward()
+
+                if self.opt.fp16:
+                    with amp.scale_loss(loss, optimizer) as scaled_loss:
+                        scaled_loss.backward()
+                else:
+                    loss.backward()
+
+                # loss.backward()
 
                 if self.opt.adv_type == 'fgm':
                     fgm.attack()  ##对抗训练
@@ -289,7 +304,7 @@ class Instructor:
             logger.info('>> saved: {}'.format(model_path))
             logger.info('#' * 100)
         logger.info('max_test_acc_overall:{:.4f}'.format(max_test_acc_overall))
-        logger.info('max_w_acc_overall:{:.4f}'.format(max_test_acc_overall))
+        logger.info('max_w_acc_overall:{:.4f}'.format(max_w_acc_overall))
         logger.info('max_f1_overall:{:.4f}'.format(max_f1_overall))
         logger.info('max_score_overall:{:.4f}'.format(max_score_overall))
         self._test(model_path)
@@ -308,88 +323,88 @@ def main():
     dataset_files = {
         # * cn-data
         'cn_fold_0': {
-            'train': './data_StratifiedKFold_666/cn/data_fold_0/train.csv',
-            'test': './data_StratifiedKFold_666/cn/data_fold_0/test.csv'
+            'train': './data/data_StratifiedKFold_666/cn/data_fold_0/train.csv',
+            'test': './data/data_StratifiedKFold_666/cn/data_fold_0/test.csv'
         },
         'cn_fold_1': {
-            'train': './data_StratifiedKFold_666/cn/data_fold_1/train.csv',
-            'test': './data_StratifiedKFold_666/cn/data_fold_1/test.csv'
+            'train': './data/data_StratifiedKFold_666/cn/data_fold_1/train.csv',
+            'test': './data/data_StratifiedKFold_666/cn/data_fold_1/test.csv'
         },
         'cn_fold_2': {
-            'train': './data_StratifiedKFold_666/cn/data_fold_2/train.csv',
-            'test': './data_StratifiedKFold_666/cn/data_fold_2/test.csv'
+            'train': './data/data_StratifiedKFold_666/cn/data_fold_2/train.csv',
+            'test': './data/data_StratifiedKFold_666/cn/data_fold_2/test.csv'
         },
         'cn_fold_3': {
-            'train': './data_StratifiedKFold_666/cn/data_fold_3/train.csv',
-            'test': './data_StratifiedKFold_666/cn/data_fold_3/test.csv'
+            'train': './data/data_StratifiedKFold_666/cn/data_fold_3/train.csv',
+            'test': './data/data_StratifiedKFold_666/cn/data_fold_3/test.csv'
         },
         'cn_fold_4': {
-            'train': './data_StratifiedKFold_666/cn/data_fold_4/train.csv',
-            'test': './data_StratifiedKFold_666/cn/data_fold_4/test.csv'
+            'train': './data/data_StratifiedKFold_666/cn/data_fold_4/train.csv',
+            'test': './data/data_StratifiedKFold_666/cn/data_fold_4/test.csv'
         },
         # * en-data
         'en_fold_0': {
-            'train': './data_StratifiedKFold_666/en/data_fold_0/train.csv',
-            'test': './data_StratifiedKFold_666/en/data_fold_0/test.csv'
+            'train': './data/data_StratifiedKFold_666/en/data_fold_0/train.csv',
+            'test': './data/data_StratifiedKFold_666/en/data_fold_0/test.csv'
         },
         'en_fold_1': {
-            'train': './data_StratifiedKFold_666/en/data_fold_1/train.csv',
-            'test': './data_StratifiedKFold_666/en/data_fold_1/test.csv'
+            'train': './data/data_StratifiedKFold_666/en/data_fold_1/train.csv',
+            'test': './data/data_StratifiedKFold_666/en/data_fold_1/test.csv'
         },
         'en_fold_2': {
-            'train': './data_StratifiedKFold_666/en/data_fold_2/train.csv',
-            'test': './data_StratifiedKFold_666/en/data_fold_2/test.csv'
+            'train': './data/data_StratifiedKFold_666/en/data_fold_2/train.csv',
+            'test': './data/data_StratifiedKFold_666/en/data_fold_2/test.csv'
         },
         'en_fold_3': {
-            'train': './data_StratifiedKFold_666/en/data_fold_3/train.csv',
-            'test': './data_StratifiedKFold_666/en/data_fold_3/test.csv'
+            'train': './data/data_StratifiedKFold_666/en/data_fold_3/train.csv',
+            'test': './data/data_StratifiedKFold_666/en/data_fold_3/test.csv'
         },
         'en_fold_4': {
-            'train': './data_StratifiedKFold_666/en/data_fold_4/train.csv',
-            'test': './data_StratifiedKFold_666/en/data_fold_4/test.csv'
+            'train': './data/data_StratifiedKFold_666/en/data_fold_4/train.csv',
+            'test': './data/data_StratifiedKFold_666/en/data_fold_4/test.csv'
         },
 
         # * cn-transdata
         'cn_trans_fold_0': {
-            'train': './transdata_StratifiedKFold_666/cn/data_fold_0/train.csv',
-            'test': './transdata_StratifiedKFold_666/cn/data_fold_0/test.csv'
+            'train': './data/transdata_StratifiedKFold_666/cn/data_fold_0/train.csv',
+            'test': './data/transdata_StratifiedKFold_666/cn/data_fold_0/test.csv'
         },
         'cn_trans_fold_1': {
-            'train': './transdata_StratifiedKFold_666/cn/data_fold_1/train.csv',
-            'test': './transdata_StratifiedKFold_666/cn/data_fold_1/test.csv'
+            'train': './data/transdata_StratifiedKFold_666/cn/data_fold_1/train.csv',
+            'test': './data/transdata_StratifiedKFold_666/cn/data_fold_1/test.csv'
         },
         'cn_trans_fold_2': {
-            'train': './transdata_StratifiedKFold_666/cn/data_fold_2/train.csv',
-            'test': './transdata_StratifiedKFold_666/cn/data_fold_2/test.csv'
+            'train': './data/transdata_StratifiedKFold_666/cn/data_fold_2/train.csv',
+            'test': './data/transdata_StratifiedKFold_666/cn/data_fold_2/test.csv'
         },
         'cn_trans_fold_3': {
-            'train': './transdata_StratifiedKFold_666/cn/data_fold_3/train.csv',
-            'test': './transdata_StratifiedKFold_666/cn/data_fold_3/test.csv'
+            'train': './data/transdata_StratifiedKFold_666/cn/data_fold_3/train.csv',
+            'test': './data/transdata_StratifiedKFold_666/cn/data_fold_3/test.csv'
         },
         'cn_trans_fold_4': {
-            'train': './transdata_StratifiedKFold_666/cn/data_fold_4/train.csv',
-            'test': './transdata_StratifiedKFold_666/cn/data_fold_4/test.csv'
+            'train': './data/transdata_StratifiedKFold_666/cn/data_fold_4/train.csv',
+            'test': './data/transdata_StratifiedKFold_666/cn/data_fold_4/test.csv'
         },
         # * en-transdata
         'en_trans_fold_0': {
-            'train': './transdata_StratifiedKFold_666/en/data_fold_0/train.csv',
-            'test': './transdata_StratifiedKFold_666/en/data_fold_0/test.csv'
+            'train': './data/transdata_StratifiedKFold_666/en/data_fold_0/train.csv',
+            'test': './data/transdata_StratifiedKFold_666/en/data_fold_0/test.csv'
         },
         'en_trans_fold_1': {
-            'train': './transdata_StratifiedKFold_666/en/data_fold_1/train.csv',
-            'test': './transdata_StratifiedKFold_666/en/data_fold_1/test.csv'
+            'train': './data/transdata_StratifiedKFold_666/en/data_fold_1/train.csv',
+            'test': './data/transdata_StratifiedKFold_666/en/data_fold_1/test.csv'
         },
         'en_trans_fold_2': {
-            'train': './transdata_StratifiedKFold_666/en/data_fold_2/train.csv',
-            'test': './transdata_StratifiedKFold_666/en/data_fold_2/test.csv'
+            'train': './data/transdata_StratifiedKFold_666/en/data_fold_2/train.csv',
+            'test': './data/transdata_StratifiedKFold_666/en/data_fold_2/test.csv'
         },
         'en_trans_fold_3': {
-            'train': './transdata_StratifiedKFold_666/en/data_fold_3/train.csv',
-            'test': './transdata_StratifiedKFold_666/en/data_fold_3/test.csv'
+            'train': './data/transdata_StratifiedKFold_666/en/data_fold_3/train.csv',
+            'test': './data/transdata_StratifiedKFold_666/en/data_fold_3/test.csv'
         },
         'en_trans_fold_4': {
-            'train': './transdata_StratifiedKFold_666/en/data_fold_4/train.csv',
-            'test': './transdata_StratifiedKFold_666/en/data_fold_4/test.csv'
+            'train': './data/transdata_StratifiedKFold_666/en/data_fold_4/train.csv',
+            'test': './data/transdata_StratifiedKFold_666/en/data_fold_4/test.csv'
         }
     }
     
@@ -439,7 +454,7 @@ def main():
     parser.add_argument('--seed', default=0, type=int)
     parser.add_argument('--bert_dim', default=768, type=int)
     parser.add_argument('--pretrained_bert_name', default='bert-base-uncased', type=str)
-    parser.add_argument("--weight_decay", default=0.0, type=float, help="Weight deay if we apply some.") # 0.01
+    parser.add_argument("--weight_decay", default=0.00, type=float, help="Weight deay if we apply some.") # 0.01
     parser.add_argument("--adam_epsilon", default=1e-8, type=float, help="Epsilon for Adam optimizer.")
     parser.add_argument('--cross_val_fold', default=5, type=int, help='k-fold cross validation')
     # parser.add_argument('--grad_clip', type=float, default=10, help='clip gradients at this value')
@@ -447,6 +462,8 @@ def main():
     parser.add_argument('--transdara', default=False, type=bool)
     parser.add_argument('--attention_hops', default=5, type=int)
     parser.add_argument('--adv_type', default=None, type=str, help='fgm, pgd')
+    parser.add_argument('--fp16', default=False, type=bool)
+    parser.add_argument('--fp16_opt_level', default='O1', help="For fp16: Apex AMP optimization level selected in ['O0', 'O1', 'O2', and 'O3'].")
     opt = parser.parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = opt.cuda
     opt.model_class = model_classes[opt.model_name]
