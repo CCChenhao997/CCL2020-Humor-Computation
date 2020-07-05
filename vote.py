@@ -16,9 +16,13 @@ def work(pres):
 if __name__=="__main__":
 
     model_name = 'bert_spc'
-    date = '0627'
+    date = '0705'
     dataset = 'cn'
-    DATA_DIR = './predict_data/{}_{}/{}/'.format(model_name, date, dataset)
+    pseudo = True
+    if pseudo:
+        DATA_DIR = './predict_data/{}_{}_pseudo/{}/'.format(model_name, date, dataset)
+    else:
+        DATA_DIR = './predict_data/{}_{}/{}/'.format(model_name, date, dataset)
     files = os.listdir(DATA_DIR)
     files = [i for i in files]
 
@@ -40,5 +44,8 @@ if __name__=="__main__":
     df_summit = df_summit.copy()
     df_summit['Label'] = voted_label
     # pprint(df_summit.head(5))
-    sava_path = './predict_data/{}_{}/vote/{}-{}-voted.csv'.format(model_name, date, model_name, dataset)
+    if pseudo:
+        sava_path = './predict_data/{}_{}_pseudo/vote/{}-{}-voted.csv'.format(model_name, date, model_name, dataset)
+    else:
+        sava_path = './predict_data/{}_{}/vote/{}-{}-voted.csv'.format(model_name, date, model_name, dataset)
     df_summit.to_csv(sava_path, index=None)
