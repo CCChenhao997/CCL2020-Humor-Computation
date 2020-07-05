@@ -10,9 +10,12 @@ import pandas as pd
 from torch.utils.data import DataLoader
 from torch.nn.utils import clip_grad_norm_
 from transformers import BertModel, AutoModel, XLMRobertaModel, GPT2Model, RobertaModel
-from models.bert_sen import BERT_Sen
+from models.bert import BERT
 from models.bert_spc import BERT_SPC
 from models.bert_att import BERT_Att
+from models.bert_spc_att import BERT_SPC_Att
+from models.bert_spc_pos import BERT_SPC_Pos
+from models.bert_spc_cap import BERT_SPC_Cap
 from data_utils import Tokenizer4Bert, BertSentenceDataset
 
 
@@ -21,7 +24,7 @@ class Inferer:
     def __init__(self, opt):
         self.opt = opt
         tokenizer = Tokenizer4Bert(opt.max_length, opt.pretrained_bert_name)
-        bert_model = BertModel.from_pretrained(opt.pretrained_bert_name)
+        bert_model = BertModel.from_pretrained(opt.pretrained_bert_name, output_hidden_states=True)
         self.pretrained_bert_state_dict = bert_model.state_dict()
         self.model = opt.model_class(bert_model, opt).to(opt.device)
 
@@ -69,6 +72,12 @@ def get_parameters():
     parser.add_argument("--adam_epsilon", default=1e-8, type=float, help="Epsilon for Adam optimizer.")
     parser.add_argument('--cross_val_fold', default=5, type=int, help='k-fold cross validation')
     # parser.add_argument('--grad_clip', type=float, default=10, help='clip gradients at this value')
+    parser.add_argument('--cuda', default=0, type=str)
+    parser.add_argument('--transdata', default=False, type=bool)
+    parser.add_argument('--attention_hops', default=5, type=int)
+    parser.add_argument('--adv_type', default=None, type=str, help='fgm, pgd')
+    parser.add_argument('--fp16', default=False, type=bool)
+    parser.add_argument('--fp16_opt_level', default='O1', help="For fp16: Apex AMP optimization level selected in ['O0', 'O1', 'O2', and 'O3'].")
     opt = parser.parse_args()
     return opt
 
@@ -76,35 +85,40 @@ def get_parameters():
 if __name__=="__main__":
     # torch.set_printoptions(precision=3, threshold=float("inf"), edgeitems=None, linewidth=300, profile=None)
     model_classes = {
-        'bert_sen': BERT_Sen,
+        'bert': BERT,
         'bert_att': BERT_Att,
         'bert_spc': BERT_SPC,
+        'bert_spc_att': BERT_SPC_Att,
+        'bert_spc_pos': BERT_SPC_Pos,
+        'bert_spc_cap': BERT_SPC_Cap,
     }
 
     model_state_dict_paths = {
-        # 'bert_spc': './skf_checkpoint/en/bert_spc_en_fold_0_f1_0.6552',
-        # 'bert_spc': './skf_checkpoint/en/bert_spc_en_fold_1_f1_0.6627',
-        # 'bert_spc': './skf_checkpoint/en/bert_spc_en_fold_2_f1_0.6703',
-        # 'bert_spc': './skf_checkpoint/en/bert_spc_en_fold_3_f1_0.6753',
-        # 'bert_spc': './skf_checkpoint/en/bert_spc_en_fold_4_f1_0.6711',
+        # 'bert_spc': './recorder/bert_spc_0703_adv/en/bert_spc_en_fold_0_score_1.4303',
+        # 'bert_spc': './recorder/bert_spc_0703_adv/en/bert_spc_en_fold_1_score_1.4434',
+        # 'bert_spc': './recorder/bert_spc_0703_adv/en/bert_spc_en_fold_2_score_1.4481',
+        # 'bert_spc': './recorder/bert_spc_0703_adv/en/bert_spc_en_fold_3_score_1.4569',
+        # 'bert_spc': './recorder/bert_spc_0703_adv/en/bert_spc_en_fold_4_score_1.4566',
 
-        # 'bert_spc': './skf_checkpoint/cn/bert_spc_cn_fold_0_f1_0.6540',
-        # 'bert_spc': './skf_checkpoint/cn/bert_spc_cn_fold_1_f1_0.6440',
-        # 'bert_spc': './skf_checkpoint/cn/bert_spc_cn_fold_2_f1_0.6376',
-        # 'bert_spc': './skf_checkpoint/cn/bert_spc_cn_fold_3_f1_0.6434',
-        # 'bert_spc': './skf_checkpoint/cn/bert_spc_cn_fold_4_f1_0.6493',
+        # 'bert_spc': './recorder/bert_spc_0703_adv/cn/bert_spc_cn_fold_0_score_1.3849',
+        # 'bert_spc': './recorder/bert_spc_0703_adv/cn/bert_spc_cn_fold_1_score_1.3520',
+        # 'bert_spc': './recorder/bert_spc_0703_adv/cn/bert_spc_cn_fold_2_score_1.3619',
+        # 'bert_spc': './recorder/bert_spc_0703_adv/cn/bert_spc_cn_fold_3_score_1.3773',
+        # 'bert_spc': './recorder/bert_spc_0703_adv/cn/bert_spc_cn_fold_4_score_1.3710',
 
-        # 'bert_spc': './skf_checkpoint_pseudo/en/bert_spc_en_fold_0_f1_0.6871',
-        # 'bert_spc': './skf_checkpoint_pseudo/en/bert_spc_en_fold_1_f1_0.6808',
-        # 'bert_spc': './skf_checkpoint_pseudo/en/bert_spc_en_fold_2_f1_0.7069',
-        # 'bert_spc': './skf_checkpoint_pseudo/en/bert_spc_en_fold_3_f1_0.6882',
-        # 'bert_spc': './skf_checkpoint_pseudo/en/bert_spc_en_fold_4_f1_0.7092',
+        # * 伪标签模型
+        # 'bert_spc': './recorder/bert_spc_0703_adv_pseudo/en/bert_spc_en_fold_0_score_1.4734',
+        # 'bert_spc': './recorder/bert_spc_0703_adv_pseudo/en/bert_spc_en_fold_1_score_1.4553',
+        # 'bert_spc': './recorder/bert_spc_0703_adv_pseudo/en/bert_spc_en_fold_2_score_1.4593',
+        # 'bert_spc': './recorder/bert_spc_0703_adv_pseudo/en/bert_spc_en_fold_3_score_1.4274',
+        # 'bert_spc': './recorder/bert_spc_0703_adv_pseudo/en/bert_spc_en_fold_4_score_1.4384',
 
-        # 'bert_spc': './skf_checkpoint_pseudo/cn/bert_spc_cn_fold_0_f1_0.6710',
-        # 'bert_spc': './skf_checkpoint_pseudo/cn/bert_spc_cn_fold_1_f1_0.6826',
-        # 'bert_spc': './skf_checkpoint_pseudo/cn/bert_spc_cn_fold_2_f1_0.6632',
-        # 'bert_spc': './skf_checkpoint_pseudo/cn/bert_spc_cn_fold_3_f1_0.6790',
-        'bert_spc': './skf_checkpoint_pseudo/cn/bert_spc_cn_fold_4_f1_0.6713',
+        # 'bert_spc': './recorder/bert_spc_0703_adv_pseudo/cn/bert_spc_cn_fold_0_score_1.3920',
+        # 'bert_spc': './recorder/bert_spc_0703_adv_pseudo/cn/bert_spc_cn_fold_1_score_1.4059',
+        # 'bert_spc': './recorder/bert_spc_0703_adv_pseudo/cn/bert_spc_cn_fold_2_score_1.4094',
+        # 'bert_spc': './recorder/bert_spc_0703_adv_pseudo/cn/bert_spc_cn_fold_3_score_1.3736',
+        # 'bert_spc': './recorder/bert_spc_0703_adv_pseudo/cn/bert_spc_cn_fold_4_score_1.4310',
+        
     }
 
     dataset_files = {
@@ -117,17 +131,28 @@ if __name__=="__main__":
     }
     
     input_colses = {
-        'bert_sen': ['text_raw_bert_indices', 'attention_mask'],
-        'bert_att': ['text_raw_bert_indices', 'attention_mask'],
-        'bert_spc': ['text_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
+        'bert': ['sentence_bert_indices', 'attention_mask'],
+        'bert_att': ['sentence_bert_indices', 'attention_mask'],
+        'bert_spc': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
+        'bert_spc_att': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
+        'bert_spc_pos': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
+        'bert_spc_cap': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
     }
 
     opt = get_parameters()
     #! 注意
     opt.dataset = 'cn'
+    date = "0705"
+    fold_n = 4
+    pseudo = True
     #! 模型路径
     # opt.pretrained_bert_name = 'bert-base-uncased'
     opt.pretrained_bert_name = './pretrain_models/ERNIE_cn'
+
+    #! max_length
+    if opt.dataset == 'cn':
+        opt.max_length = 128
+
     opt.dataset_file = dataset_files[opt.dataset]
     opt.inputs_cols = input_colses[opt.model_name]
     opt.model_class = model_classes[opt.model_name]
@@ -139,9 +164,13 @@ if __name__=="__main__":
     id = [i for i in range(len(predict_label))]
 
     predict_df = pd.DataFrame(list(zip(id, predict_label)))
-    #! 记得写fold_n 和 date
-    date = "0627"
-    fold_n = 4
-    save_path = "./predict_data/{}_{}/{}/{}-{}-fold-{}.csv".format(
-        opt.model_name, date, opt.dataset, opt.model_name, opt.dataset, fold_n)
-    predict_df.to_csv(save_path, index=None, header=['ID', 'Label'])
+
+    if pseudo:
+        save_path = "./predict_data/{}_{}_pseudo/{}".format(opt.model_name, date, opt.dataset)
+    else:
+        save_path = "./predict_data/{}_{}/{}".format(opt.model_name, date, opt.dataset)
+    if not os.path.exists(save_path):
+        os.makedirs(save_path, mode=0o777)
+    
+    file_path = "{}/{}-{}-fold-{}.csv".format(save_path, opt.model_name, opt.dataset, fold_n)
+    predict_df.to_csv(file_path, index=None, header=['ID', 'Label'])
