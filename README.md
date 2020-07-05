@@ -13,6 +13,7 @@ CCL2020 第二届“小牛杯”幽默计算——情景喜剧笑点识别
 - [x] 对抗训练
 - [x] 加权Accuracy + F1选择模型
 - [x] bert + 胶囊网络
+- [ ] bert + 图神经网络
 - [ ] 加载最优模型，学习率*0.1，再跑几个epoch
 - [ ] 动态衰减
 - [ ] F1优化
@@ -23,7 +24,11 @@ CCL2020 第二届“小牛杯”幽默计算——情景喜剧笑点识别
 ### 数据部分 
 
 - [x] Speaker + Sentence
-- [x] Pre-sentence + Post-sentence
+- [x] Pre-sentence + Cur-sentence
+- [ ] Pre-sentence + Cur-sentence + Post-sentence
+- [ ] Speaker 筛选
+- [ ] 欠采样
+- [ ] 过采样
 - [ ] 数据增强 [[参考1]](https://zhuanlan.zhihu.com/p/145521255?utm_source=wechat_session&utm_medium=social&utm_oi=602621868809916416) [[参考2]](https://github.com/tongchangD/text_data_enhancement_with_LaserTagger?utm_source=wechat_session&utm_medium=social&utm_oi=602621868809916416) [[参考3]](https://github.com/QData/TextAttack) [[参考4]](https://github.com/flyingwaters/EDA-Easier-Data-Augment-for-chinese)
 
 
