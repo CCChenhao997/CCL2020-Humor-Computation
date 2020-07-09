@@ -22,6 +22,7 @@ from models.bert_att import BERT_Att
 from models.bert_spc_att import BERT_SPC_Att
 from models.bert_spc_pos import BERT_SPC_Pos
 from models.bert_spc_cap import BERT_SPC_Cap
+from models.bert_spc_lay import BERT_SPC_Lay
 from data_utils import Tokenizer4Bert, BertSentenceDataset, get_time_dif
 from sklearn.model_selection import StratifiedKFold, KFold
 from collections import defaultdict
@@ -72,17 +73,6 @@ class Instructor:
             logger.info('>>> {0}: {1}'.format(arg, getattr(self.opt, arg)))
     
     def _reset_params(self):
-        # for child in self.model.children():
-        #     if type(child) != BertModel:  # skip bert params
-        #         for p in child.parameters():
-        #             if p.requires_grad:
-        #                 if len(p.shape) > 1:
-        #                     self.opt.initializer(p)
-        #                 else:
-        #                     stdv = 1. / math.sqrt(p.shape[0])
-        #                     torch.nn.init.uniform_(p, a=-stdv, b=stdv)
-        #     else:
-        #         self.model.bert.load_state_dict(self.pretrained_bert_state_dict)
         for name, param in self.model.named_parameters():
             if 'bert' not in name:
                 if param.requires_grad:
@@ -116,7 +106,7 @@ class Instructor:
             K = 3
 
         # criterion = nn.CrossEntropyLoss()
-        criterion = FocalLoss(num_class=2, alpha=0.25, gamma=2, smooth=0.2)
+        criterion = FocalLoss(num_class=2, alpha=0.25, gamma=2, smooth=0.1)
         if 'bert' in self.opt.model_name:
             optimizer = self.get_bert_optimizer(self.opt, self.model)
         else:
@@ -185,7 +175,7 @@ class Instructor:
                     n_total += len(outputs)
                     train_acc = n_correct / n_total
                     test_acc, w_acc, f1 = self._evaluate()
-                    score = w_acc + f1
+                    score = w_acc*0.2 + f1
 
                     if test_acc > max_test_acc:
                         max_test_acc = test_acc
@@ -207,7 +197,7 @@ class Instructor:
                         if score > max_score_overall:
                             if not os.path.exists('state_dict'):
                                 os.mkdir('state_dict')
-                            path = './state_dict/{0}_{1}_score_{2:.4f}'.format(self.opt.model_name, self.opt.dataset, score)
+                            path = './state_dict/{0}_{1}_score_{2:.4f}_f1_{3:.4f}'.format(self.opt.model_name, self.opt.dataset, score, f1)
                             # torch.save(self.model.state_dict(), path)
                             # logger.info('>> saved: {}'.format(path))
                             logger.info('>> The {0} has been promoted on {1} with score {2:.4f}'.format(self.opt.model_name, self.opt.dataset, score))
@@ -321,50 +311,51 @@ def main():
         'bert_spc_att': BERT_SPC_Att,
         'bert_spc_pos': BERT_SPC_Pos,
         'bert_spc_cap': BERT_SPC_Cap,
+        'bert_spc_lay': BERT_SPC_Lay,
     }
     
     dataset_files = {
         # * cn-data
         'cn_fold_0': {
-            'train': './data/data_StratifiedKFold_666/cn/data_fold_0/train.csv',
-            'test': './data/data_StratifiedKFold_666/cn/data_fold_0/test.csv'
+            'train': './data/data_StratifiedKFold_666_under/cn/data_fold_0/train.csv',
+            'test': './data/data_StratifiedKFold_666_under/cn/data_fold_0/test.csv'
         },
         'cn_fold_1': {
-            'train': './data/data_StratifiedKFold_666/cn/data_fold_1/train.csv',
-            'test': './data/data_StratifiedKFold_666/cn/data_fold_1/test.csv'
+            'train': './data/data_StratifiedKFold_666_under/cn/data_fold_1/train.csv',
+            'test': './data/data_StratifiedKFold_666_under/cn/data_fold_1/test.csv'
         },
         'cn_fold_2': {
-            'train': './data/data_StratifiedKFold_666/cn/data_fold_2/train.csv',
-            'test': './data/data_StratifiedKFold_666/cn/data_fold_2/test.csv'
+            'train': './data/data_StratifiedKFold_666_under/cn/data_fold_2/train.csv',
+            'test': './data/data_StratifiedKFold_666_under/cn/data_fold_2/test.csv'
         },
         'cn_fold_3': {
-            'train': './data/data_StratifiedKFold_666/cn/data_fold_3/train.csv',
-            'test': './data/data_StratifiedKFold_666/cn/data_fold_3/test.csv'
+            'train': './data/data_StratifiedKFold_666_under/cn/data_fold_3/train.csv',
+            'test': './data/data_StratifiedKFold_666_under/cn/data_fold_3/test.csv'
         },
         'cn_fold_4': {
-            'train': './data/data_StratifiedKFold_666/cn/data_fold_4/train.csv',
-            'test': './data/data_StratifiedKFold_666/cn/data_fold_4/test.csv'
+            'train': './data/data_StratifiedKFold_666_under/cn/data_fold_4/train.csv',
+            'test': './data/data_StratifiedKFold_666_under/cn/data_fold_4/test.csv'
         },
         # * en-data
         'en_fold_0': {
-            'train': './data/data_StratifiedKFold_666_pseudo_0704/en/data_fold_0/train.csv',
-            'test': './data/data_StratifiedKFold_666_pseudo_0704/en/data_fold_0/test.csv'
+            'train': './data/data_StratifiedKFold_666/en/data_fold_0/train.csv',
+            'test': './data/data_StratifiedKFold_666/en/data_fold_0/test.csv'
         },
         'en_fold_1': {
-            'train': './data/data_StratifiedKFold_666_pseudo_0704/en/data_fold_1/train.csv',
-            'test': './data/data_StratifiedKFold_666_pseudo_0704/en/data_fold_1/test.csv'
+            'train': './data/data_StratifiedKFold_666/en/data_fold_1/train.csv',
+            'test': './data/data_StratifiedKFold_666/en/data_fold_1/test.csv'
         },
         'en_fold_2': {
-            'train': './data/data_StratifiedKFold_666_pseudo_0704/en/data_fold_2/train.csv',
-            'test': './data/data_StratifiedKFold_666_pseudo_0704/en/data_fold_2/test.csv'
+            'train': './data/data_StratifiedKFold_666/en/data_fold_2/train.csv',
+            'test': './data/data_StratifiedKFold_666/en/data_fold_2/test.csv'
         },
         'en_fold_3': {
-            'train': './data/data_StratifiedKFold_666_pseudo_0704/en/data_fold_3/train.csv',
-            'test': './data/data_StratifiedKFold_666_pseudo_0704/en/data_fold_3/test.csv'
+            'train': './data/data_StratifiedKFold_666/en/data_fold_3/train.csv',
+            'test': './data/data_StratifiedKFold_666/en/data_fold_3/test.csv'
         },
         'en_fold_4': {
-            'train': './data/data_StratifiedKFold_666_pseudo_0704/en/data_fold_4/train.csv',
-            'test': './data/data_StratifiedKFold_666_pseudo_0704/en/data_fold_4/test.csv'
+            'train': './data/data_StratifiedKFold_666/en/data_fold_4/train.csv',
+            'test': './data/data_StratifiedKFold_666/en/data_fold_4/test.csv'
         },
 
         # * cn-transdata
@@ -418,6 +409,7 @@ def main():
         'bert_spc_att': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
         'bert_spc_pos': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
         'bert_spc_cap': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
+        'bert_spc_lay': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
     }
     
     initializers = {
