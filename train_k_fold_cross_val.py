@@ -6,6 +6,7 @@ import random
 import math
 import logging
 import sys
+import copy
 import time
 from time import strftime, localtime
 from sklearn import metrics
@@ -105,8 +106,11 @@ class Instructor:
             pgd = PGD(self.model)
             K = 3
 
-        # criterion = nn.CrossEntropyLoss()
-        criterion = FocalLoss(num_class=2, alpha=0.25, gamma=2, smooth=0.1)
+        if self.opt.criterion == 'focalloss':
+            criterion = FocalLoss(num_class=2, alpha=0.25, gamma=2, smooth=0.1)
+        else:
+            criterion = nn.CrossEntropyLoss()
+        
         if 'bert' in self.opt.model_name:
             optimizer = self.get_bert_optimizer(self.opt, self.model)
         else:
@@ -174,8 +178,9 @@ class Instructor:
                     n_correct += (torch.argmax(outputs, -1) == targets).sum().item()
                     n_total += len(outputs)
                     train_acc = n_correct / n_total
-                    test_acc, w_acc, f1 = self._evaluate()
-                    score = w_acc*0.2 + f1
+                    test_acc, w_acc, f1, f1_0, f1_1 = self._evaluate()
+                    # score = w_acc*0.2 + f1
+                    score = w_acc*0.15 + f1_0*0.35 + f1_1
 
                     if test_acc > max_test_acc:
                         max_test_acc = test_acc
@@ -185,25 +190,23 @@ class Instructor:
 
                     if f1 > max_f1:
                         max_f1 = f1
-                        # if f1 > max_f1_overall:
-                        #     if not os.path.exists('state_dict'):
-                        #         os.mkdir('state_dict')
-                        #     path = './state_dict/{0}_{1}_f1_{2:.4f}'.format(self.opt.model_name, self.opt.dataset, f1)
-                        #     torch.save(self.model.state_dict(), path)
-                        #     logger.info('>> saved: {}'.format(path))
                     
                     if score > max_score:
                         max_score = score
                         if score > max_score_overall:
                             if not os.path.exists('state_dict'):
                                 os.mkdir('state_dict')
-                            path = './state_dict/{0}_{1}_score_{2:.4f}_f1_{3:.4f}'.format(self.opt.model_name, self.opt.dataset, score, f1)
+                            # path = './state_dict/{0}_{1}_score_{2:.4f}_f1_{3:.4f}'.format(self.opt.model_name, self.opt.dataset, score, f1)
+                            path = './state_dict/{0}_{1}_f1_{2:.4f}_f1_0_{3:.4f}_f1_1_{4:.4f}'.format(self.opt.model_name, self.opt.dataset, f1, f1_0, f1_1)
                             # torch.save(self.model.state_dict(), path)
                             # logger.info('>> saved: {}'.format(path))
                             logger.info('>> The {0} has been promoted on {1} with score {2:.4f}'.format(self.opt.model_name, self.opt.dataset, score))
+                            self.best_model = copy.deepcopy(self.model)
 
-                    logger.info('loss: {:.4f}, acc: {:.4f}, test_acc: {:.4f}, w_acc: {:.4f}, f1: {:.4f}, score: {:.4f}'\
-                                .format(loss.item(), train_acc, test_acc, w_acc, f1, score))
+                    # logger.info('loss: {:.4f}, acc: {:.4f}, test_acc: {:.4f}, w_acc: {:.4f}, f1: {:.4f}, score: {:.4f}'\
+                    #             .format(loss.item(), train_acc, test_acc, w_acc, f1, score))
+                    logger.info('loss: {:.4f}, acc: {:.4f}, test_acc: {:.4f}, w_acc: {:.4f}, f1: {:.4f}, f1_0: {:.4f}, f1_1: {:.4f}'\
+                                .format(loss.item(), train_acc, test_acc, w_acc, f1, f1_0, f1_1))
 
         return max_test_acc, max_w_acc, max_f1, max_score, path
     
@@ -227,6 +230,8 @@ class Instructor:
                 t_outputs_all = torch.cat((t_outputs_all, t_outputs), dim=0) if t_outputs_all is not None else t_outputs
         test_acc = n_test_correct / n_test_total
         f1 = metrics.f1_score(t_targets_all.cpu(), torch.argmax(t_outputs_all, -1).cpu(), labels=[0, 1], average='macro')
+        f1_0 = metrics.f1_score(t_targets_all.cpu()==0, torch.argmax(t_outputs_all, -1).cpu()==0, labels=True)
+        f1_1 = metrics.f1_score(t_targets_all.cpu()==1, torch.argmax(t_outputs_all, -1).cpu()==1, labels=True)
 
         dialog_id = ids_all.data.cpu().numpy()
         labels = t_targets_all.data.cpu().numpy()
@@ -235,11 +240,13 @@ class Instructor:
         w_acc = self.weighted_acc(dialog_id, labels, predic)
         
         if show_results:
-            report = metrics.classification_report(labels, predic, digits=4)
-            confusion = metrics.confusion_matrix(labels, predic)
-            return report, confusion
+            # report = metrics.classification_report(labels, predic, digits=4)
+            report = metrics.classification_report(t_targets_all.cpu(), torch.argmax(t_outputs_all, -1).cpu(), digits=4)
+            # confusion = metrics.confusion_matrix(labels, predic)
+            confusion = metrics.confusion_matrix(t_targets_all.cpu(), torch.argmax(t_outputs_all, -1).cpu())
+            return report, confusion, f1, f1_0, f1_1
 
-        return test_acc, w_acc, f1
+        return test_acc, w_acc, f1, f1_0, f1_1
 
     def weighted_acc(self, ids, labels, predict_labels):
         # compute the weighted_accuracy
@@ -267,14 +274,15 @@ class Instructor:
         # test
         self.model.load_state_dict(torch.load(model_path))
         self.model.eval()
-        # start_time = time.time()
-        test_report, test_confusion = self._evaluate(show_results=True)
+        test_report, test_confusion, f1, f1_0, f1_1 = self._evaluate(show_results=True)
         logger.info("Precision, Recall and F1-Score...")
         logger.info(test_report)
         logger.info("Confusion Matrix...")
         logger.info(test_confusion)
-        # time_dif = get_time_dif(start_time)
-        # logger.info("Time usage:", time_dif)
+        logger.info('f1: {:.4f},'.format(f1))
+        logger.info('f1_0: {:.4f},'.format(f1_0))
+        logger.info('f1_1: {:.4f},'.format(f1_1))
+
     
     def run(self, repeats=1):
         max_test_acc_overall = 0
@@ -292,7 +300,7 @@ class Instructor:
             max_f1_overall = max(max_f1, max_f1_overall)
             max_score_overall = max(max_score, max_score_overall)
             # * 模型存储
-            torch.save(self.model.state_dict(), model_path)
+            torch.save(self.best_model.state_dict(), model_path)
             logger.info('>> saved: {}'.format(model_path))
             logger.info('#' * 100)
         logger.info('max_test_acc_overall:{:.4f}'.format(max_test_acc_overall))
@@ -317,45 +325,45 @@ def main():
     dataset_files = {
         # * cn-data
         'cn_fold_0': {
-            'train': './data/data_StratifiedKFold_666_under/cn/data_fold_0/train.csv',
-            'test': './data/data_StratifiedKFold_666_under/cn/data_fold_0/test.csv'
+            'train': './data/data_StratifiedKFold_666_uuu/cn/data_fold_0/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu/cn/data_fold_0/test.csv'
         },
         'cn_fold_1': {
-            'train': './data/data_StratifiedKFold_666_under/cn/data_fold_1/train.csv',
-            'test': './data/data_StratifiedKFold_666_under/cn/data_fold_1/test.csv'
+            'train': './data/data_StratifiedKFold_666_uuu/cn/data_fold_1/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu/cn/data_fold_1/test.csv'
         },
         'cn_fold_2': {
-            'train': './data/data_StratifiedKFold_666_under/cn/data_fold_2/train.csv',
-            'test': './data/data_StratifiedKFold_666_under/cn/data_fold_2/test.csv'
+            'train': './data/data_StratifiedKFold_666_uuu/cn/data_fold_2/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu/cn/data_fold_2/test.csv'
         },
         'cn_fold_3': {
-            'train': './data/data_StratifiedKFold_666_under/cn/data_fold_3/train.csv',
-            'test': './data/data_StratifiedKFold_666_under/cn/data_fold_3/test.csv'
+            'train': './data/data_StratifiedKFold_666_uuu/cn/data_fold_3/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu/cn/data_fold_3/test.csv'
         },
         'cn_fold_4': {
-            'train': './data/data_StratifiedKFold_666_under/cn/data_fold_4/train.csv',
-            'test': './data/data_StratifiedKFold_666_under/cn/data_fold_4/test.csv'
+            'train': './data/data_StratifiedKFold_666_uuu/cn/data_fold_4/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu/cn/data_fold_4/test.csv'
         },
         # * en-data
         'en_fold_0': {
-            'train': './data/data_StratifiedKFold_666/en/data_fold_0/train.csv',
-            'test': './data/data_StratifiedKFold_666/en/data_fold_0/test.csv'
+            'train': './data/data_StratifiedKFold_666_uuu/en/data_fold_0/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu/en/data_fold_0/test.csv'
         },
         'en_fold_1': {
-            'train': './data/data_StratifiedKFold_666/en/data_fold_1/train.csv',
-            'test': './data/data_StratifiedKFold_666/en/data_fold_1/test.csv'
+            'train': './data/data_StratifiedKFold_666_uuu/en/data_fold_1/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu/en/data_fold_1/test.csv'
         },
         'en_fold_2': {
-            'train': './data/data_StratifiedKFold_666/en/data_fold_2/train.csv',
-            'test': './data/data_StratifiedKFold_666/en/data_fold_2/test.csv'
+            'train': './data/data_StratifiedKFold_666_uuu/en/data_fold_2/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu/en/data_fold_2/test.csv'
         },
         'en_fold_3': {
-            'train': './data/data_StratifiedKFold_666/en/data_fold_3/train.csv',
-            'test': './data/data_StratifiedKFold_666/en/data_fold_3/test.csv'
+            'train': './data/data_StratifiedKFold_666_uuu/en/data_fold_3/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu/en/data_fold_3/test.csv'
         },
         'en_fold_4': {
-            'train': './data/data_StratifiedKFold_666/en/data_fold_4/train.csv',
-            'test': './data/data_StratifiedKFold_666/en/data_fold_4/test.csv'
+            'train': './data/data_StratifiedKFold_666_uuu/en/data_fold_4/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu/en/data_fold_4/test.csv'
         },
 
         # * cn-transdata
@@ -458,6 +466,7 @@ def main():
     parser.add_argument('--transdata', default=False, type=bool)
     parser.add_argument('--attention_hops', default=5, type=int)
     parser.add_argument('--adv_type', default=None, type=str, help='fgm, pgd')
+    parser.add_argument('--criterion', default=None, type=str, help='focalloss')
     parser.add_argument('--fp16', default=False, type=bool)
     parser.add_argument('--fp16_opt_level', default='O1', help="For fp16: Apex AMP optimization level selected in ['O0', 'O1', 'O2', and 'O3'].")
     opt = parser.parse_args()
