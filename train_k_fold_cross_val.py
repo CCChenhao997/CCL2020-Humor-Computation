@@ -180,7 +180,7 @@ class Instructor:
                     train_acc = n_correct / n_total
                     test_acc, w_acc, f1, f1_0, f1_1 = self._evaluate()
                     # score = w_acc*0.2 + f1
-                    score = w_acc*0.15 + f1_0*0.35 + f1_1
+                    score = test_acc*0.15 + f1_0*0.35 + f1_1
 
                     if test_acc > max_test_acc:
                         max_test_acc = test_acc
@@ -229,28 +229,28 @@ class Instructor:
                 t_targets_all = torch.cat((t_targets_all, t_targets), dim=0) if t_targets_all is not None else t_targets
                 t_outputs_all = torch.cat((t_outputs_all, t_outputs), dim=0) if t_outputs_all is not None else t_outputs
         test_acc = n_test_correct / n_test_total
-        f1 = metrics.f1_score(t_targets_all.cpu(), torch.argmax(t_outputs_all, -1).cpu(), labels=[0, 1], average='macro')
-        f1_0 = metrics.f1_score(t_targets_all.cpu()==0, torch.argmax(t_outputs_all, -1).cpu()==0, labels=True)
-        f1_1 = metrics.f1_score(t_targets_all.cpu()==1, torch.argmax(t_outputs_all, -1).cpu()==1, labels=True)
 
-        dialog_id = ids_all.data.cpu().numpy()
-        labels = t_targets_all.data.cpu().numpy()
-        predic = torch.argmax(t_outputs_all, -1).cpu().numpy()
+        dialog_id = ids_all.data.cpu()
+        labels = t_targets_all.data.cpu()
+        predic = torch.argmax(t_outputs_all, -1).cpu()
 
+        f1 = metrics.f1_score(labels, predic, labels=[0, 1], average='macro')
+        f1_0 = metrics.f1_score(labels==0, predic==0, labels=True)
+        f1_1 = metrics.f1_score(labels==1, predic==1, labels=True)
         w_acc = self.weighted_acc(dialog_id, labels, predic)
         
         if show_results:
             # report = metrics.classification_report(labels, predic, digits=4)
-            report = metrics.classification_report(t_targets_all.cpu(), torch.argmax(t_outputs_all, -1).cpu(), digits=4)
+            report = metrics.classification_report(labels, predic, digits=4)
             # confusion = metrics.confusion_matrix(labels, predic)
-            confusion = metrics.confusion_matrix(t_targets_all.cpu(), torch.argmax(t_outputs_all, -1).cpu())
+            confusion = metrics.confusion_matrix(labels, predic)
             return report, confusion, f1, f1_0, f1_1
 
         return test_acc, w_acc, f1, f1_0, f1_1
 
     def weighted_acc(self, ids, labels, predict_labels):
         # compute the weighted_accuracy
-        ids, labels, predict_labels = ids.tolist(), labels.tolist(), predict_labels.tolist()
+        # ids, labels, predict_labels = ids.tolist(), labels.tolist(), predict_labels.tolist()
         n_test_total = len(ids)
         acc_dict = defaultdict(defaultdict)
         total_acc = 0
@@ -346,24 +346,24 @@ def main():
         },
         # * en-data
         'en_fold_0': {
-            'train': './data/data_StratifiedKFold_666_uuu/en/data_fold_0/train.csv',
-            'test': './data/data_StratifiedKFold_666_uuu/en/data_fold_0/test.csv'
+            'train': './data/data_StratifiedKFold_666/en/data_fold_0/train.csv',
+            'test': './data/data_StratifiedKFold_666/en/data_fold_0/test.csv'
         },
         'en_fold_1': {
-            'train': './data/data_StratifiedKFold_666_uuu/en/data_fold_1/train.csv',
-            'test': './data/data_StratifiedKFold_666_uuu/en/data_fold_1/test.csv'
+            'train': './data/data_StratifiedKFold_666/en/data_fold_1/train.csv',
+            'test': './data/data_StratifiedKFold_666/en/data_fold_1/test.csv'
         },
         'en_fold_2': {
-            'train': './data/data_StratifiedKFold_666_uuu/en/data_fold_2/train.csv',
-            'test': './data/data_StratifiedKFold_666_uuu/en/data_fold_2/test.csv'
+            'train': './data/data_StratifiedKFold_666/en/data_fold_2/train.csv',
+            'test': './data/data_StratifiedKFold_666/en/data_fold_2/test.csv'
         },
         'en_fold_3': {
-            'train': './data/data_StratifiedKFold_666_uuu/en/data_fold_3/train.csv',
-            'test': './data/data_StratifiedKFold_666_uuu/en/data_fold_3/test.csv'
+            'train': './data/data_StratifiedKFold_666/en/data_fold_3/train.csv',
+            'test': './data/data_StratifiedKFold_666/en/data_fold_3/test.csv'
         },
         'en_fold_4': {
-            'train': './data/data_StratifiedKFold_666_uuu/en/data_fold_4/train.csv',
-            'test': './data/data_StratifiedKFold_666_uuu/en/data_fold_4/test.csv'
+            'train': './data/data_StratifiedKFold_666/en/data_fold_4/train.csv',
+            'test': './data/data_StratifiedKFold_666/en/data_fold_4/test.csv'
         },
 
         # * cn-transdata
