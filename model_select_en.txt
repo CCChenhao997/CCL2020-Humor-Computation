@@ -1,0 +1,15 @@
+日期：0711
+dataset：en
+pretrain_model: bert-base-uncased
+en_fold_0: ./recorder/bert_spc_lay_0711/en_uuu_adv/bert_spc_lay_en_fold_0_f1_0.6630_f1_0_0.8253_f1_1_0.5006
+en_fold_1: ./recorder/bert_spc_lay_0711/en_raw/bert_spc_lay_en_fold_1_f1_0.6705_f1_0_0.8287_f1_1_0.5122
+en_fold_2: ./recorder/bert_spc_lay_0711/en_raw_adv/bert_spc_lay_en_fold_2_f1_0.6870_f1_0_0.8473_f1_1_0.5267
+en_fold_3: ./recorder/bert_spc_lay_0711/en_uuu_adv/bert_spc_lay_en_fold_3_f1_0.6835_f1_0_0.8494_f1_1_0.5176
+en_fold_4: ./recorder/bert_spc_lay_0711/en_raw_adv/bert_spc_lay_en_fold_4_f1_0.6958_f1_0_0.8550_f1_1_0.5365
+
+pseudo训练后的模型选择：
+en_fold_0: ./recorder/bert_spc_lay_0711_pseudo/en/en_raw_pseudo/bert_spc_lay_en_fold_0_f1_0.6713_f1_0_0.8406_f1_1_0.5021
+en_fold_1: ./recorder/bert_spc_lay_0711_pseudo/en/en_raw_pseudo/bert_spc_lay_en_fold_1_f1_0.6734_f1_0_0.8169_f1_1_0.5298
+en_fold_2: ./recorder/bert_spc_lay_0711_pseudo/en/en_raw_pseudo/bert_spc_lay_en_fold_2_f1_0.6815_f1_0_0.8420_f1_1_0.5209
+en_fold_3: ./recorder/bert_spc_lay_0711_pseudo/en/en_raw_pseudo/bert_spc_lay_en_fold_3_f1_0.6964_f1_0_0.8561_f1_1_0.5367
+en_fold_4: ./recorder/bert_spc_lay_0711_pseudo/en/en_raw_pseudo/bert_spc_lay_en_fold_4_f1_0.6999_f1_0_0.8660_f1_1_0.5337
