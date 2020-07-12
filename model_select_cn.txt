@@ -1,0 +1,9 @@
+日期：0711
+dateset: cn
+pretrain_model: ernie
+cn_fold_0: ./recorder/bert_spc_lay_0711/cn_uuu_adv/bert_spc_lay_cn_fold_0_f1_0.6606_f1_0_0.7744_f1_1_0.5469
+cn_fold_1: ./recorder/bert_spc_lay_0711/cn_uuu_adv/bert_spc_lay_cn_fold_1_f1_0.6394_f1_0_0.7496_f1_1_0.5292
+cn_fold_2: ./recorder/bert_spc_lay_0711/cn_uuu_drop0.3/bert_spc_lay_cn_fold_2_f1_0.6421_f1_0_0.7605_f1_1_0.5236
+cn_fold_3: ./recorder/bert_spc_lay_0711/cn_uuu_adv/bert_spc_lay_cn_fold_3_f1_0.6237_f1_0_0.7242_f1_1_0.5231
+cn_fold_4: ./recorder/bert_spc_lay_0711/cn_uuu_adv/bert_spc_lay_cn_fold_4_f1_0.6528_f1_0_0.7800_f1_1_0.5255
+tips: fold_0/1/3/4 选取bert_spc_lay + adv + dropout0.5, fold_2 选取bert_spc_lay + dropout0.3
