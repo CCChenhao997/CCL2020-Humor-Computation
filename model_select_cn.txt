@@ -16,3 +16,22 @@ cn_fold_2: recorder/bert_spc_lay_0711_pseudo/cn/cn_adv_uuu_0.5/bert_spc_lay_cn_f
 cn_fold_3: recorder/bert_spc_lay_0711_pseudo/cn/cn_adv_uuu_0.5/bert_spc_lay_cn_fold_3_f1_0.6438_f1_0_0.7635_f1_1_0.5241
 cn_fold_4: recorder/bert_spc_lay_0711_pseudo/cn/cn_uuu_0.3/bert_spc_lay_cn_fold_4_f1_0.6549_f1_0_0.7772_f1_1_0.5327
 tips:fold_0/1 采取uuu数据集 dropout0.1, fold_2/3 uuu数据集 + adv +dropout0.5, fold_4 uuu数据集 +dropout_0.3
+
+
+日期:0719
+dataset:cn
+pretrain_model: ernie
+cn_fold_0: recorder/第四周/pick_0711/cn/lay_adv_711/bert_spc_lay_cn_fold_0_f1_0.6606_f1_0_0.7744_f1_1_0.5469_score_1.2456
+cn_fold_1:recorder/第五周/cn_uuu_ordered/bert_spc_cnn_0717/bert_spc_cnn_cn_fold_1_uuu_f1_0.6467_f1_0_0.7828_f1_1_0.5106_acc_0.6991_score_1.2097
+cn_fold_2:recorder/第五周/cn_raw_ordered/bert_spc_lay_0714_dropout_0_decay_0.01/bert_spc_lay_cn_fold_2_f1_0.6523_f1_0_0.7792_f1_1_0.5255_acc_0.6986_score_1.2241
+cn_fold_3:recorder/第五周/cn_raw_ordered/bert_spc_0716_dropout_0.3_decay_0.01_lr_5E-5/bert_spc_cn_fold_3_f1_0.6435_f1_0_0.7760_f1_1_0.5110_acc_0.6927_score_1.2037
+cn_fold_4: recorder/第四周/bert_spc_lay_0711/cn_uuu_adv/bert_spc_lay_cn_fold_4_f1_0.6528_f1_0_0.7800_f1_1_0.5255
+
+dataset:cn_pseudo 此回不一定选用pseudo后的模型, 按模型score选取
+pretrain_model: ernie
+cn_fold_0: recorder/第四周/pick_0711/cn/0712_pseudo/bert_spc_lay_cn_fold_0_uuu_f1_0.6627_f1_0_0.7759_f1_1_0.5496_score_1.2503
+cn_fold_1: recorder/第五周/cn_mixed_pseudo/bert_spc_cnn_cn_fold_1_f1_0.6513_f1_0_0.7872_f1_1_0.5155_acc_0.7043_score_1.2198
+cn_fold_2: recorder/第五周/cn_raw_ordered/bert_spc_lay_0714_dropout_0_decay_0.01/bert_spc_lay_cn_fold_2_f1_0.6523_f1_0_0.7792_f1_1_0.5255_acc_0.6986_score_1.2241
+cn_fold_3: recorder/第四周/bert_spc_lay_0711_pseudo/cn/cn_uuu_0.3/bert_spc_lay_cn_fold_3_f1_0.6481_f1_0_0.7767_f1_1_0.5196_score_1.2147
+cn_fold_4: recorder/第四周/bert_spc_lay_0711_pseudo/cn/cn_uuu_0.3/bert_spc_lay_cn_fold_4_f1_0.6549_f1_0_0.7772_f1_1_0.5327
+
