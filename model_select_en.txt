@@ -1,5 +1,5 @@
 第四周提交记录：
-日期：0711
+日期：0712
 dataset：en
 pretrain_model: bert-base-uncased
 en_fold_0: ./recorder/bert_spc_lay_0711/en_uuu_adv/bert_spc_lay_en_fold_0_f1_0.6630_f1_0_0.8253_f1_1_0.5006
@@ -8,10 +8,28 @@ en_fold_2: ./recorder/bert_spc_lay_0711/en_raw_adv/bert_spc_lay_en_fold_2_f1_0.6
 en_fold_3: ./recorder/bert_spc_lay_0711/en_uuu_adv/bert_spc_lay_en_fold_3_f1_0.6835_f1_0_0.8494_f1_1_0.5176
 en_fold_4: ./recorder/bert_spc_lay_0711/en_raw_adv/bert_spc_lay_en_fold_4_f1_0.6958_f1_0_0.8550_f1_1_0.5365
 
-日期：0712
 pseudo训练后的模型选择：
 en_fold_0: ./recorder/bert_spc_lay_0711_pseudo/en/en_raw_pseudo/bert_spc_lay_en_fold_0_f1_0.6713_f1_0_0.8406_f1_1_0.5021
 en_fold_1: ./recorder/bert_spc_lay_0711_pseudo/en/en_raw_pseudo/bert_spc_lay_en_fold_1_f1_0.6734_f1_0_0.8169_f1_1_0.5298
 en_fold_2: ./recorder/bert_spc_lay_0711_pseudo/en/en_raw_pseudo/bert_spc_lay_en_fold_2_f1_0.6815_f1_0_0.8420_f1_1_0.5209
 en_fold_3: ./recorder/bert_spc_lay_0711_pseudo/en/en_raw_pseudo/bert_spc_lay_en_fold_3_f1_0.6964_f1_0_0.8561_f1_1_0.5367
 en_fold_4: ./recorder/bert_spc_lay_0711_pseudo/en/en_raw_pseudo/bert_spc_lay_en_fold_4_f1_0.6999_f1_0_0.8660_f1_1_0.5337
+
+
+第五周提交记录：
+日期：0719
+pretrain_model: bert-base-uncased
+数据扩充：使用的是 ./recorder/第五周/en_uuu_ordered/bert_spc_cnn_0718_epoch=5/* 五折模型对Friends台词进行标注，然后随机采样了3000条正样本，
+最终选取了前2500条对五折数据中的train.csv进行了过采样。
+en_fold_0: ./recorder/第五周/en_aug_ordered/bert_spc_0718_nn.Linear/bert_spc_en_fold_0_aug_f1_0.6870_f1_0_0.8606_f1_1_0.5135_acc_0.7833_score_1.2968
+en_fold_1: ./recorder/第五周/en_aug_ordered/bert_spc_0718_nn.Linear/bert_spc_en_fold_1_aug_f1_0.6736_f1_0_0.8465_f1_1_0.5007_acc_0.7652_score_1.2659
+en_fold_2: ./recorder/第五周/en_aug_ordered/bert_spc_0718_nn.Linear/bert_spc_en_fold_2_aug_f1_0.6791_f1_0_0.8582_f1_1_0.5000_acc_0.7791_score_1.2791
+en_fold_3: ./recorder/第五周/en_aug_ordered/bert_spc_0718_nn.Linear/bert_spc_en_fold_3_aug_f1_0.6985_f1_0_0.8607_f1_1_0.5362_acc_0.7858_score_1.3220
+en_fold_4: ./recorder/第五周/en_aug_ordered/bert_spc_0718_nn.Linear/bert_spc_en_fold_4_aug_f1_0.6997_f1_0_0.8599_f1_1_0.5395_acc_0.7851_score_1.3246
+
+pseudo训练后的模型选择：
+en_fold_0: ./recorder/第五周/en_aug_pseudo/bert_spc_0719_Linear/bert_spc_en_fold_0_aug_pseudo_f1_0.6877_f1_0_0.8413_f1_1_0.5342_acc_0.7632_score_1.2974
+en_fold_1: ./recorder/第五周/en_aug_pseudo/bert_spc_0719_Linear/bert_spc_en_fold_1_aug_pseudo_f1_0.6789_f1_0_0.8542_f1_1_0.5037_acc_0.7746_score_1.2783
+en_fold_2: ./recorder/第五周/en_aug_pseudo/bert_spc_0719_Linear/bert_spc_en_fold_2_aug_pseudo_f1_0.6864_f1_0_0.8352_f1_1_0.5376_acc_0.7570_score_1.2946
+en_fold_3: ./recorder/第五周/en_aug_pseudo/bert_spc_0719_Linear/bert_spc_en_fold_3_aug_pseudo_f1_0.7041_f1_0_0.8627_f1_1_0.5455_acc_0.7892_score_1.3346
+en_fold_4: ./recorder/第五周/en_aug_pseudo/bert_spc_0719_Linear/bert_spc_en_fold_4_aug_pseudo_f1_0.6957_f1_0_0.8709_f1_1_0.5205_acc_0.7965_score_1.3170
