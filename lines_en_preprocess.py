@@ -24,10 +24,10 @@ def data_process(input_path, output_path):
         
     data = list(zip(idx_list, speaker_list, sentence_list))
     data_df = pd.DataFrame(data, columns=['ID', 'Speaker', 'Sentence'])
-    data_df.to_csv(output_path, index=None)
+    data_df.to_csv(output_path, index=None, header=False, sep='\t')
     
 
 if __name__ == "__main__":
     input_path = "data/stage_lines/Friends.txt"
-    output_path = "data/stage_lines/Friends.csv"
+    output_path = "data/stage_lines/Friends.tsv"
     data_process(input_path, output_path)
