@@ -2,7 +2,6 @@ import os
 import torch
 import torch.nn as nn
 from time import strftime, localtime
-import argparse
 import random
 from sklearn import metrics
 import numpy as np
@@ -36,25 +35,33 @@ class Inferer:
     def evaluate(self):
         self.model.eval()
         predict = []
+        targets_all, outputs_all = None, None
         with torch.no_grad():
             for batch, sample_batched in enumerate(self.test_dataloader):
                 inputs = [sample_batched[col].to(self.opt.device) for col in self.opt.inputs_cols]
                 outputs = self.model(inputs)
-                predict.extend(torch.argmax(outputs, -1).cpu().numpy().tolist())
-        return predict
+                targets = sample_batched['polarity'].to(self.opt.device)
+                # predict.extend(torch.argmax(outputs, -1).cpu().numpy().tolist())
+                targets_all = torch.cat((targets_all, targets), dim=0) if targets_all is not None else targets
+                outputs_all = torch.cat((outputs_all, outputs), dim=0) if outputs_all is not None else outputs
+        
+        labels = targets_all.data.cpu()
+        predic = torch.argmax(outputs_all, -1).cpu()
+        acc = metrics.accuracy_score(labels, predic)
+        f1_1 = metrics.f1_score(labels, predic, average='binary')
+        return acc, f1_1
 
 
 if __name__=="__main__":
-    # torch.set_printoptions(precision=3, threshold=float("inf"), edgeitems=None, linewidth=300, profile=None)
 
     model_state_dict_paths = {
         
         'en':{
-            '0': './recorder/第五周/en_aug_pseudo/bert_spc_0719_Linear/bert_spc_en_fold_0_aug_pseudo_f1_0.6877_f1_0_0.8413_f1_1_0.5342_acc_0.7632_score_1.2974',
-            '1': './recorder/第五周/en_aug_pseudo/bert_spc_0719_Linear/bert_spc_en_fold_1_aug_pseudo_f1_0.6789_f1_0_0.8542_f1_1_0.5037_acc_0.7746_score_1.2783',
-            '2': './recorder/第五周/en_aug_pseudo/bert_spc_0719_Linear/bert_spc_en_fold_2_aug_pseudo_f1_0.6864_f1_0_0.8352_f1_1_0.5376_acc_0.7570_score_1.2946',
-            '3': './recorder/第五周/en_aug_pseudo/bert_spc_0719_Linear/bert_spc_en_fold_3_aug_pseudo_f1_0.7041_f1_0_0.8627_f1_1_0.5455_acc_0.7892_score_1.3346',
-            '4': './recorder/第五周/en_aug_pseudo/bert_spc_0719_Linear/bert_spc_en_fold_4_aug_pseudo_f1_0.6957_f1_0_0.8709_f1_1_0.5205_acc_0.7965_score_1.3170',
+            '0': './recorder/第六周/en_aug_0721/bert_spc_batchsize=8_logstep=5/bert_spc_en_fold_0_aug_f1_0.6751_f1_0_0.8309_f1_1_0.5193_acc_0.7498_score_1.2691',
+            '1': './recorder/第六周/en_aug_0721/bert_spc_batchsize=8_logstep=5/bert_spc_en_fold_1_aug_f1_0.6571_f1_0_0.7906_f1_1_0.5235_acc_0.7090_score_1.2326',
+            '2': './recorder/第六周/en_aug_0721/bert_spc_batchsize=8_logstep=5/bert_spc_en_fold_2_aug_f1_0.6888_f1_0_0.8415_f1_1_0.5361_acc_0.7637_score_1.2999',
+            '3': './recorder/第六周/en_aug_0721/bert_spc_batchsize=8_logstep=5/bert_spc_en_fold_3_aug_f1_0.6959_f1_0_0.8388_f1_1_0.5530_acc_0.7631_score_1.3161',
+            '4': './recorder/第六周/en_aug_0721/bert_spc_batchsize=8_logstep=5/bert_spc_en_fold_4_aug_f1_0.6833_f1_0_0.8283_f1_1_0.5383_acc_0.7497_score_1.2879',
         },
 
         'cn':{
@@ -64,27 +71,14 @@ if __name__=="__main__":
             '3': './recorder/第五周/pick_0719/cn/after_pseudo/bert_spc_lay_cn_fold_3_f1_0.6481_f1_0_0.7767_f1_1_0.5196_score_1.2147',
             '4': './recorder/第五周/pick_0719/cn/after_pseudo/bert_spc_lay_cn_fold_4_f1_0.6549_f1_0_0.7772_f1_1_0.5327_score_1.2309',
         }
-        # * 伪标签模型
-        # 'bert_spc': './recorder/bert_spc_0703_adv_pseudo/en/bert_spc_en_fold_0_score_1.4734',
-        # 'bert_spc': './recorder/bert_spc_0703_adv_pseudo/en/bert_spc_en_fold_1_score_1.4553',
-        # 'bert_spc': './recorder/bert_spc_0703_adv_pseudo/en/bert_spc_en_fold_2_score_1.4593',
-        # 'bert_spc': './recorder/bert_spc_0703_adv_pseudo/en/bert_spc_en_fold_3_score_1.4274',
-        # 'bert_spc': './recorder/bert_spc_0703_adv_pseudo/en/bert_spc_en_fold_4_score_1.4384',
-
-        # 'bert_spc': './recorder/bert_spc_0703_adv_pseudo/cn/bert_spc_cn_fold_0_score_1.3920',
-        # 'bert_spc': './recorder/bert_spc_0703_adv_pseudo/cn/bert_spc_cn_fold_1_score_1.4059',
-        # 'bert_spc': './recorder/bert_spc_0703_adv_pseudo/cn/bert_spc_cn_fold_2_score_1.4094',
-        # 'bert_spc': './recorder/bert_spc_0703_adv_pseudo/cn/bert_spc_cn_fold_3_score_1.3736',
-        # 'bert_spc': './recorder/bert_spc_0703_adv_pseudo/cn/bert_spc_cn_fold_4_score_1.4310',
-        
     }
 
     dataset_files = {
         'cn': {
-            'test': './data/preprocess/cn_test.tsv'
+            'test': './data/preprocess/cn_total.tsv'
         },
         'en': {
-            'test': './data/preprocess/en_test.tsv'
+            'test': './data/preprocess/en_total.tsv'
         }
     }
 
@@ -92,24 +86,13 @@ if __name__=="__main__":
         'cn':  './pretrain_models/ERNIE_cn',
         'en':  'bert-base-uncased'
     }
-    
-    # opt = get_parameters()
+
     opt.dataset_file = dataset_files[opt.dataset]
     opt.pretrained_bert_name = pretrained_bert_names[opt.dataset]
     opt.state_dict_path = model_state_dict_paths[opt.dataset][opt.fold_n]
 
     inf = Inferer(opt)
-    predict_label = inf.evaluate()
-    id = [i for i in range(len(predict_label))]
-
-    predict_df = pd.DataFrame(list(zip(id, predict_label)))
-
-    if opt.pseudo != "False":
-        save_path = "./predict_data/{}_{}_pseudo/{}".format(opt.model_name, opt.date, opt.dataset)
-    else:
-        save_path = "./predict_data/{}_{}/{}".format(opt.model_name, opt.date, opt.dataset)
-    if not os.path.exists(save_path):
-        os.makedirs(save_path, mode=0o777)
-    
-    file_path = "{}/{}-{}-fold-{}.csv".format(save_path, opt.model_name, opt.dataset, opt.fold_n)
-    predict_df.to_csv(file_path, index=None, header=['ID', 'Label'])
+    acc, f1_1 = inf.evaluate()
+    print("fold: ", opt.fold_n)
+    print("acc: ", acc)
+    print("f1_1: ", f1_1)

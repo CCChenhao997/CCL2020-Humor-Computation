@@ -10,16 +10,8 @@ import pandas as pd
 from torch.utils.data import DataLoader
 from torch.nn.utils import clip_grad_norm_
 from transformers import BertModel, AutoModel, XLMRobertaModel, GPT2Model, RobertaModel
-from models.bert import BERT
-from models.bert_spc import BERT_SPC
-from models.bert_att import BERT_Att
-from models.bert_spc_att import BERT_SPC_Att
-from models.bert_spc_pos import BERT_SPC_Pos
-from models.bert_spc_cap import BERT_SPC_Cap
-from models.bert_spc_lay import BERT_SPC_Lay
-from models.bert_spc_rnn import BERT_SPC_RNN
-from models.bert_spc_cnn import BERT_SPC_CNN
 from data_utils import Tokenizer4Bert, BertSentenceDataset
+from config import model_classes, input_colses, initializers, optimizers, opt
 
 
 class Inferer:
@@ -45,66 +37,14 @@ class Inferer:
         self.model.eval()
         predict = []
         with torch.no_grad():
-            for t_batch, t_sample_batched in enumerate(self.test_dataloader):
-                t_inputs = [t_sample_batched[col].to(self.opt.device) for col in self.opt.inputs_cols]
-                t_outputs = self.model(t_inputs)
-                predict.extend(torch.argmax(t_outputs, -1).cpu().numpy().tolist())
+            for batch, sample_batched in enumerate(self.test_dataloader):
+                inputs = [sample_batched[col].to(self.opt.device) for col in self.opt.inputs_cols]
+                outputs = self.model(inputs)
+                predict.extend(torch.argmax(outputs, -1).cpu().numpy().tolist())
         return predict
 
 
-def get_parameters():
-    # Hyperparameters
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--model_name', default='bert_spc', type=str, help=', '.join(model_classes.keys()))
-    parser.add_argument('--dataset', default='en', type=str, help=', '.join(dataset_files.keys()))
-    parser.add_argument('--date', default='date', type=str)
-    parser.add_argument('--fold_n', default=0, type=str)
-    parser.add_argument('--pseudo', default='False', type=str)
-    
-    parser.add_argument('--learning_rate', default=0.002, type=float)    # 1e-3
-    parser.add_argument('--dropout', default=0.5, type=float)
-    parser.add_argument('--l2reg', default=1e-5, type=float)    # 1e-5
-    parser.add_argument('--num_epoch', default=20, type=int)
-    parser.add_argument('--batch_size', default=16, type=int)
-    parser.add_argument('--log_step', default=5, type=int)
-    # parser.add_argument('--embed_dim', default=300, type=int)
-    parser.add_argument('--hidden_dim', default=300, type=int)
-    parser.add_argument('--position_dim', default=100, type=int)
-    parser.add_argument('--polarities_dim', default=2, type=int, help='2')
-    parser.add_argument('--max_length', default=80, type=int)
-    parser.add_argument('--device', default=None, type=str, help='cpu, cuda')
-    parser.add_argument('--seed', default=0, type=int)
-    parser.add_argument('--bert_dim', default=768, type=int)
-    # parser.add_argument('--pretrained_bert_name', default='bert-base-uncased', type=str)
-    parser.add_argument("--weight_decay", default=0.0, type=float, help="Weight deay if we apply some.")
-    parser.add_argument("--adam_epsilon", default=1e-8, type=float, help="Epsilon for Adam optimizer.")
-    parser.add_argument('--cross_val_fold', default=5, type=int, help='k-fold cross validation')
-    # parser.add_argument('--grad_clip', type=float, default=10, help='clip gradients at this value')
-    parser.add_argument('--cuda', default=0, type=str)
-    parser.add_argument('--transdata', default=False, type=bool)
-    parser.add_argument('--attention_hops', default=5, type=int)
-    parser.add_argument('--adv_type', default=None, type=str, help='fgm, pgd')
-    parser.add_argument('--fp16', default=False, type=bool)
-    parser.add_argument('--fp16_opt_level', default='O1', help="For fp16: Apex AMP optimization level selected in ['O0', 'O1', 'O2', and 'O3'].")
-    parser.add_argument('--filter_sizes', default=(2, 3, 4), type=tuple)
-    parser.add_argument('--num_filters', default=256, type=int)
-    opt = parser.parse_args()
-    return opt
-
-
 if __name__=="__main__":
-    # torch.set_printoptions(precision=3, threshold=float("inf"), edgeitems=None, linewidth=300, profile=None)
-    model_classes = {
-        'bert': BERT,
-        'bert_att': BERT_Att,
-        'bert_spc': BERT_SPC,
-        'bert_spc_att': BERT_SPC_Att,
-        'bert_spc_pos': BERT_SPC_Pos,
-        'bert_spc_cap': BERT_SPC_Cap,
-        'bert_spc_lay': BERT_SPC_Lay,
-        'bert_spc_rnn': BERT_SPC_RNN,
-        'bert_spc_cnn': BERT_SPC_CNN,
-    }
 
     model_state_dict_paths = {
         
@@ -117,11 +57,11 @@ if __name__=="__main__":
         },
 
         'cn':{
-            '0': './recorder/pick/cn/lay_adv_711/bert_spc_lay_cn_fold_0_f1_0.6606_f1_0_0.7744_f1_1_0.5469',
-            '1': './recorder/pick/cn/lay_adv_711/bert_spc_lay_cn_fold_1_f1_0.6394_f1_0_0.7496_f1_1_0.5292',
-            '2': './recorder/pick/cn/lay_adv_711/bert_spc_lay_cn_fold_2_f1_0.6421_f1_0_0.7605_f1_1_0.5236',
-            '3': './recorder/pick/cn/lay_adv_711/bert_spc_lay_cn_fold_3_f1_0.6237_f1_0_0.7242_f1_1_0.5231',
-            '4': './recorder/pick/cn/lay_adv_711/bert_spc_lay_cn_fold_4_f1_0.6528_f1_0_0.7800_f1_1_0.5255',
+            '0': './recorder/第五周/pick_0719/cn/after_pseudo/bert_spc_lay_cn_fold_0_uuu_f1_0.6627_f1_0_0.7759_f1_1_0.5496_score_1.2503',
+            '1': './recorder/第五周/pick_0719/cn/after_pseudo/bert_spc_cnn_cn_fold_1_f1_0.6513_f1_0_0.7872_f1_1_0.5155_acc_0.7043_score_1.2198',
+            '2': './recorder/第五周/pick_0719/cn/after_pseudo/bert_spc_lay_cn_fold_2_f1_0.6523_f1_0_0.7792_f1_1_0.5255_acc_0.6986_score_1.2241',
+            '3': './recorder/第五周/pick_0719/cn/after_pseudo/bert_spc_lay_cn_fold_3_f1_0.6481_f1_0_0.7767_f1_1_0.5196_score_1.2147',
+            '4': './recorder/第五周/pick_0719/cn/after_pseudo/bert_spc_lay_cn_fold_4_f1_0.6549_f1_0_0.7772_f1_1_0.5327_score_1.2309',
         }
     }
 
@@ -138,26 +78,11 @@ if __name__=="__main__":
         'cn':  './pretrain_models/ERNIE_cn',
         'en':  'bert-base-uncased'
     }
-    
-    input_colses = {
-        'bert': ['sentence_bert_indices', 'attention_mask'],
-        'bert_att': ['sentence_bert_indices', 'attention_mask'],
-        'bert_spc': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
-        'bert_spc_att': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
-        'bert_spc_pos': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
-        'bert_spc_cap': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
-        'bert_spc_lay': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
-        'bert_spc_rnn': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
-        'bert_spc_cnn': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
-    }
 
-    opt = get_parameters()
+    # opt = get_parameters()
     opt.dataset_file = dataset_files[opt.dataset]
     opt.pretrained_bert_name = pretrained_bert_names[opt.dataset]
-    opt.inputs_cols = input_colses[opt.model_name]
-    opt.model_class = model_classes[opt.model_name]
     opt.state_dict_path = model_state_dict_paths[opt.dataset][opt.fold_n]
-    opt.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     inf = Inferer(opt)
     predict_label = inf.evaluate()
