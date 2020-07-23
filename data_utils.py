@@ -4,9 +4,11 @@ import re
 import json
 import pickle
 import time
+import torch
 from datetime import timedelta
 import numpy as np
 import pandas as pd
+from config import logger
 from transformers import BertTokenizer, AutoTokenizer, RobertaTokenizer, AlbertTokenizer
 from torch.utils.data import Dataset
 
@@ -21,8 +23,10 @@ def parse_data(data_path):
     all_data = []
     for index, line in df.iterrows():
         dialogue_id = int(line[0])
-        speaker = line[1].lower().strip()
-        sentence = line[2].lower().strip()
+        speaker = line[1].strip()
+        sentence = line[2].strip()
+        # speaker = line[1].lower().strip()
+        # sentence = line[2].lower().strip()
         try:
             polarity = int(line[3])
         except:
@@ -33,30 +37,55 @@ def parse_data(data_path):
 
     return all_data
 
+
 def parse_transdata(data_path):
     df = pd.read_csv(data_path, sep='\t', header=None, encoding='utf-8', engine='python')
     all_data = []
     for index, line in df.iterrows():
         dialogue_id = int(line[0])
-        sentence_pre = line[3].lower().strip()
+        speaker_pre = line[1].lower().strip()
+        speaker_post = line[2].lower().strip()
+        sentence_pre = line[3].lower().strip() 
         sentence_post = line[4].lower().strip()
         try:
             polarity = int(line[5])
         except:
             polarity = 0
 
-        data = {'dialogue_id': dialogue_id, 'sentence_pre': sentence_pre, 'sentence_post': sentence_post, 'polarity': polarity}
+        data = {'dialogue_id': dialogue_id, 'speaker_pre': speaker_pre, 'speaker_post': speaker_post,
+                'sentence_pre': sentence_pre, 'sentence_post': sentence_post, 'polarity': polarity}
         all_data.append(data)
 
+    return all_data
+
+
+def parse_rawdata(data_path):
+    df = pd.read_csv(data_path, encoding='utf-8', engine='python')
+    all_data = dict()
+    for index, line in df.iterrows():
+        dialogue_id = int(line[1])
+        utterance_id = int(line[2])
+        speaker = line[3].strip()
+        sentence = line[4].strip()
+        try:
+            polarity = int(line[5])
+        except:
+            polarity = 0
+
+        data = {'speaker': speaker, 'sentence': sentence, 'polarity': polarity}
+        if dialogue_id not in all_data:
+            all_data[dialogue_id] = []
+            all_data[dialogue_id].append(data)
+        else:
+            all_data[dialogue_id].append(data)
+        # data = {'dialogue_id': dialogue_id, 'speaker': speaker, 'sentence': sentence, 'polarity': polarity}
+        # all_data.append(data)
     return all_data
 
 
 class Tokenizer4Bert(object):
     def __init__(self, max_length, pretrained_bert_name):
         self.tokenizer = BertTokenizer.from_pretrained(pretrained_bert_name)
-        # self.tokenizer = AlbertTokenizer.from_pretrained(pretrained_bert_name)
-        # self.tokenizer = RobertaTokenizer.from_pretrained(pretrained_bert_name)
-        # self.tokenizer = AutoTokenizer.from_pretrained(pretrained_bert_name)
         self.max_length = max_length
 
     def text_to_sequence(self, text, reverse=False, padding='post', truncating='post'):
@@ -94,19 +123,25 @@ class BertSentenceDataset(Dataset):
     ''' PyTorch standard dataset class '''
     def __init__(self, fname, tokenizer, target_dim, opt):
         data = list()
-
-        if opt.transdara:
+        if opt.datatype == 'transdata':
+            logger.info('datatype:{}'.format(opt.datatype))
             parse = parse_transdata
             for obj in parse(fname):
+                speaker_bert_indices = tokenizer.text_to_sequence("[CLS] " + obj['sentence_post'] + " [SEP]")
+                # speaker_pre_indices = tokenizer.text_to_sequence(obj['speaker_pre'])
+                # speaker_post_indices = tokenizer.text_to_sequence(obj['speaker_post'])
                 sentence_pre_indices = tokenizer.text_to_sequence(obj['sentence_pre'])
                 sentence_post_indices = tokenizer.text_to_sequence(obj['sentence_post'])
                 sentence_post_bert_indices = tokenizer.text_to_sequence("[CLS] " + obj['sentence_post'] + " [SEP]")
                 sentence_pair_bert_indices = tokenizer.text_to_sequence("[CLS] " + obj['sentence_pre'] + " [SEP] " + obj['sentence_post'] + " [SEP]")
+                sentence_pair_bert_indices_speaker = tokenizer.text_to_sequence("[CLS] " + obj['speaker_pre'] + ' ' + obj['sentence_pre'] + " [SEP] " + obj['speaker_post'] + ' ' + obj['sentence_post'] + " [SEP]")
+                sentence_pair_bert_indices_speaker_reverse = tokenizer.text_to_sequence("[CLS] " + obj['speaker_post'] + ' ' + obj['sentence_post'] + " [SEP] " + obj['speaker_pre'] + ' ' + obj['sentence_pre'] + " [SEP]")
                 # sentence_post_len = np.sum(sentence_post_indices != 0)
                 bert_segments_ids = np.asarray([0] * (np.sum(sentence_pre_indices != 0) + 2) + [1] * (np.sum(sentence_post_indices != 0) + 1))
                 bert_segments_ids = tokenizer.pad_sequence(bert_segments_ids, 0, tokenizer.max_length)
                 polarity = obj['polarity']
                 dialogue_id = obj['dialogue_id']
+                
 
                 attention_mask = np.asarray([1] * np.sum(sentence_post_bert_indices != 0) + [0] * (opt.max_length - np.sum(sentence_post_bert_indices != 0)))
                 attention_mask_pair = np.asarray([1] * np.sum(sentence_pair_bert_indices != 0) + [0] * (opt.max_length - np.sum(sentence_pair_bert_indices != 0)))
@@ -114,20 +149,60 @@ class BertSentenceDataset(Dataset):
                     {
                         'sentence_bert_indices': sentence_post_bert_indices,
                         'sentence_pair_bert_indices': sentence_pair_bert_indices,
+                        'sentence_pair_bert_indeces_reverse': sentence_pair_bert_indices_speaker_reverse,
                         'bert_segments_ids': bert_segments_ids,
                         'attention_mask': attention_mask,
                         'attention_mask_pair': attention_mask_pair,
-                        'polarity': polarity
+                        'polarity': polarity,
+                        'dialogue_id': dialogue_id,
+                        'speaker_bert_indices': speaker_bert_indices
                     }
                 )
 
-        else:
-            parse = parse_data
+        elif opt.datatype == 'diadata':
+            logger.info('datatype:{}'.format(opt.datatype))
+            parse = parse_rawdata
+            for key, value in parse(fname).items():
+                dialogue_data = []
+                dialogue_id = key
+                for term in value:
+                    sentence_indices = tokenizer.text_to_sequence(term['sentence'])
+                    sentence_bert_indices = tokenizer.text_to_sequence("[CLS] " + term['sentence'] + " [SEP]")
+                    speaker_bert_indices = tokenizer.text_to_sequence("[CLS] " + term['speaker'] + " [SEP]")
+                    sentence_speaker_bert_indices = tokenizer.text_to_sequence("[CLS] " + term['speaker'] + " [SEP] " + term['sentence'] + " [SEP]")
+                    sentence_speaker_bert_indices_reverse = tokenizer.text_to_sequence("[CLS] " + term['sentence'] + " [SEP] " + term['speaker'] + " [SEP]")
+                    speaker_indices = tokenizer.text_to_sequence(term['speaker'])
+                    bert_segments_ids = np.asarray([0] * (np.sum(speaker_indices != 0) + 2) + [1] * (np.sum(sentence_indices != 0) + 1))
+                    bert_segments_ids = tokenizer.pad_sequence(bert_segments_ids, 0, tokenizer.max_length)
+                    polarity = term['polarity']
+                    # dialogue_id = term['dialogue_id']
+                    attention_mask = np.asarray([1] * np.sum(sentence_bert_indices != 0) + [0] * (opt.max_length - np.sum(sentence_bert_indices != 0)))
+                    attention_mask_pair = np.asarray([1] * np.sum(sentence_speaker_bert_indices != 0) + [0] * (opt.max_length - np.sum(sentence_speaker_bert_indices != 0)))
+                    dialogue_data.append(
+                        {
+                            'sentence_bert_indices': sentence_bert_indices,
+                            'sentence_pair_bert_indices': sentence_speaker_bert_indices,
+                            'sentence_pair_bert_indeces_reverse': sentence_speaker_bert_indices_reverse,
+                            'bert_segments_ids': bert_segments_ids,
+                            'attention_mask': attention_mask,
+                            'attention_mask_pair': attention_mask_pair,
+                            'polarity': polarity,
+                            # 'dialogue_id': dialogue_id,
+                            'speaker_bert_indices': speaker_bert_indices
+                        }
+                    )
 
+                data.append(dialogue_data)
+
+        else:
+            logger.info('datatype:{}'.format(opt.datatype))
+            parse = parse_data
             for obj in parse(fname):
                 sentence_indices = tokenizer.text_to_sequence(obj['sentence'])
                 sentence_bert_indices = tokenizer.text_to_sequence("[CLS] " + obj['sentence'] + " [SEP]")
+                speaker_bert_indices = tokenizer.text_to_sequence("[CLS] " + obj['speaker'] + " [SEP]")
                 sentence_speaker_bert_indices = tokenizer.text_to_sequence("[CLS] " + obj['speaker'] + " [SEP] " + obj['sentence'] + " [SEP]")
+                sentence_speaker_bert_indices_reverse = tokenizer.text_to_sequence("[CLS] " + obj['sentence'] + " [SEP] " + obj['speaker'] + " [SEP]")
                 speaker_indices = tokenizer.text_to_sequence(obj['speaker'])
                 bert_segments_ids = np.asarray([0] * (np.sum(speaker_indices != 0) + 2) + [1] * (np.sum(sentence_indices != 0) + 1))
                 bert_segments_ids = tokenizer.pad_sequence(bert_segments_ids, 0, tokenizer.max_length)
@@ -140,11 +215,13 @@ class BertSentenceDataset(Dataset):
                     {
                         'sentence_bert_indices': sentence_bert_indices,
                         'sentence_pair_bert_indices': sentence_speaker_bert_indices,
+                        'sentence_pair_bert_indeces_reverse': sentence_speaker_bert_indices_reverse,
                         'bert_segments_ids': bert_segments_ids,
                         'attention_mask': attention_mask,
                         'attention_mask_pair': attention_mask_pair,
                         'polarity': polarity,
-                        'dialogue_id': dialogue_id
+                        'dialogue_id': dialogue_id,
+                        'speaker_bert_indices': speaker_bert_indices
                     }
                 )
 
@@ -155,3 +232,26 @@ class BertSentenceDataset(Dataset):
     
     def __len__(self):
         return len(self._data)
+
+
+def collate_wrapper(batch):
+    sentence_bert_indices = torch.LongTensor([item['sentence_bert_indices'] for item in batch[0]])
+    sentence_pair_bert_indices = torch.LongTensor([item['sentence_pair_bert_indices'] for item in batch[0]])
+    sentence_pair_bert_indeces_reverse = torch.LongTensor([item['sentence_pair_bert_indeces_reverse'] for item in batch[0]])
+    bert_segments_ids = torch.LongTensor([item['bert_segments_ids'] for item in batch[0]])
+    attention_mask = torch.LongTensor([item['attention_mask'] for item in batch[0]])
+    attention_mask_pair = torch.LongTensor([item['attention_mask_pair'] for item in batch[0]])
+    polarity = torch.LongTensor([item['polarity'] for item in batch[0]])
+    speaker_bert_indices = torch.LongTensor([item['speaker_bert_indices'] for item in batch[0]])
+    data = {
+            'sentence_bert_indices': sentence_bert_indices,
+            'sentence_pair_bert_indices': sentence_pair_bert_indices,
+            'sentence_pair_bert_indeces_reverse': sentence_pair_bert_indeces_reverse,
+            'bert_segments_ids': bert_segments_ids,
+            'attention_mask': attention_mask,
+            'attention_mask_pair': attention_mask_pair,
+            'polarity': polarity,
+            # 'dialogue_id': dialogue_id,
+            'speaker_bert_indices': speaker_bert_indices
+        }
+    return data

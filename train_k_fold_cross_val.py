@@ -17,15 +17,11 @@ from torch.utils.data import DataLoader, random_split, ConcatDataset
 from torch.nn.utils import clip_grad_norm_
 from models_utils.loss_helper import FocalLoss
 from models_utils.adv_helper import FGM, PGD
-from data_utils import Tokenizer4Bert, BertSentenceDataset, get_time_dif
+from data_utils import Tokenizer4Bert, BertSentenceDataset, get_time_dif, collate_wrapper
 from sklearn.model_selection import StratifiedKFold, KFold
 from collections import defaultdict
 from transformers import get_linear_schedule_with_warmup
-from config import model_classes, input_colses, initializers, optimizers, opt
-
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-logger.addHandler(logging.StreamHandler(sys.stdout))
+from config import model_classes, input_colses, initializers, optimizers, opt, logger
 
 
 def setup_seed(seed):
@@ -47,8 +43,12 @@ class Instructor:
         self.model = opt.model_class(bert_model, opt).to(opt.device)
         trainset = BertSentenceDataset(opt.dataset_file['train'], tokenizer, target_dim=self.opt.polarities_dim, opt=opt)
         testset = BertSentenceDataset(opt.dataset_file['test'], tokenizer, target_dim=self.opt.polarities_dim, opt=opt)
-        self.train_dataloader = DataLoader(dataset=trainset, batch_size=opt.batch_size, shuffle=True)   # , drop_last=True
-        self.test_dataloader = DataLoader(dataset=testset, batch_size=opt.batch_size, shuffle=False)
+        if opt.datatype == 'diadata':
+            self.train_dataloader = DataLoader(dataset=trainset, batch_size=opt.batch_size, shuffle=True, collate_fn=collate_wrapper)   # , drop_last=True
+            self.test_dataloader = DataLoader(dataset=testset, batch_size=opt.batch_size, shuffle=False, collate_fn=collate_wrapper)
+        else:
+            self.train_dataloader = DataLoader(dataset=trainset, batch_size=opt.batch_size, shuffle=True)   # , drop_last=True
+            self.test_dataloader = DataLoader(dataset=testset, batch_size=opt.batch_size, shuffle=False)
 
         if opt.device.type == 'cuda':
             logger.info('cuda memory allocated: {}'.format(torch.cuda.memory_allocated(self.opt.device.index)))
@@ -222,19 +222,19 @@ class Instructor:
         t_targets_all, t_outputs_all, ids_all = None, None, None
         with torch.no_grad():
             for t_batch, t_sample_batched in enumerate(self.test_dataloader):
-                ids = t_sample_batched['dialogue_id'].to(self.opt.device)
+                # ids = t_sample_batched['dialogue_id'].to(self.opt.device)
                 t_inputs = [t_sample_batched[col].to(self.opt.device) for col in self.opt.inputs_cols]
                 t_targets = t_sample_batched['polarity'].to(self.opt.device)
                 t_outputs = self.model(t_inputs)
                 n_test_correct += (torch.argmax(t_outputs, -1) == t_targets).sum().item()
                 n_test_total += len(t_outputs)
                 
-                ids_all = torch.cat((ids_all, ids), dim = 0) if ids_all is not None else ids
+                # ids_all = torch.cat((ids_all, ids), dim = 0) if ids_all is not None else ids
                 t_targets_all = torch.cat((t_targets_all, t_targets), dim=0) if t_targets_all is not None else t_targets
                 t_outputs_all = torch.cat((t_outputs_all, t_outputs), dim=0) if t_outputs_all is not None else t_outputs
         test_acc = n_test_correct / n_test_total
 
-        dialog_id = ids_all.data.cpu()
+        # dialog_id = ids_all.data.cpu()
         labels = t_targets_all.data.cpu()
         predic = torch.argmax(t_outputs_all, -1).cpu()
 
@@ -315,26 +315,26 @@ class Instructor:
 def main():
     
     dataset_files = {
-        # * en-data_uuu
-        'en_fold_0_uuu': {
-            'train': './data/data_StratifiedKFold_666_uuu/en/data_fold_0/train.csv',
-            'test': './data/data_StratifiedKFold_666_uuu/en/data_fold_0/test.csv'
+        # * en-data_dia
+        'en_fold_0_dia': {
+            'train': './data/data_StratifiedKFold_666_dia/en/data_fold_0/train.csv',
+            'test': './data/data_StratifiedKFold_666_dia/en/data_fold_0/test.csv'
         },
-        'en_fold_1_uuu': {
-            'train': './data/data_StratifiedKFold_666_uuu/en/data_fold_1/train.csv',
-            'test': './data/data_StratifiedKFold_666_uuu/en/data_fold_1/test.csv'
+        'en_fold_1_dia': {
+            'train': './data/data_StratifiedKFold_666_dia/en/data_fold_1/train.csv',
+            'test': './data/data_StratifiedKFold_666_dia/en/data_fold_1/test.csv'
         },
-        'en_fold_2_uuu': {
-            'train': './data/data_StratifiedKFold_666_uuu/en/data_fold_2/train.csv',
-            'test': './data/data_StratifiedKFold_666_uuu/en/data_fold_2/test.csv'
+        'en_fold_2_dia': {
+            'train': './data/data_StratifiedKFold_666_dia/en/data_fold_2/train.csv',
+            'test': './data/data_StratifiedKFold_666_dia/en/data_fold_2/test.csv'
         },
-        'en_fold_3_uuu': {
-            'train': './data/data_StratifiedKFold_666_uuu/en/data_fold_3/train.csv',
-            'test': './data/data_StratifiedKFold_666_uuu/en/data_fold_3/test.csv'
+        'en_fold_3_dia': {
+            'train': './data/data_StratifiedKFold_666_dia/en/data_fold_3/train.csv',
+            'test': './data/data_StratifiedKFold_666_dia/en/data_fold_3/test.csv'
         },
-        'en_fold_4_uuu': {
-            'train': './data/data_StratifiedKFold_666_uuu/en/data_fold_4/train.csv',
-            'test': './data/data_StratifiedKFold_666_uuu/en/data_fold_4/test.csv'
+        'en_fold_4_dia': {
+            'train': './data/data_StratifiedKFold_666_dia/en/data_fold_4/train.csv',
+            'test': './data/data_StratifiedKFold_666_dia/en/data_fold_4/test.csv'
         },
         # * en-data
         'en_fold_0': {
@@ -402,7 +402,6 @@ def main():
         }
     }
     
-    os.environ["CUDA_VISIBLE_DEVICES"] = opt.cuda
     opt.dataset_file = dataset_files[opt.dataset]
     
     # set random seed

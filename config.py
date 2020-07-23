@@ -1,6 +1,9 @@
+import os
+import sys
 import torch
 import torch.nn as nn
 import argparse
+import logging
 from models.bert import BERT
 from models.bert_spc import BERT_SPC
 from models.bert_att import BERT_Att
@@ -11,7 +14,11 @@ from models.bert_spc_lay import BERT_SPC_Lay
 from models.bert_spc_rnn import BERT_SPC_RNN
 from models.bert_spc_cnn import BERT_SPC_CNN
 from models.lcf_bert import LCF_BERT
+from models.bert_bag_cnn import BERT_BAG_CNN
 
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.StreamHandler(sys.stdout))
 
 model_classes = {
         'bert': BERT,
@@ -23,7 +30,8 @@ model_classes = {
         'bert_spc_lay': BERT_SPC_Lay,
         'bert_spc_rnn': BERT_SPC_RNN,
         'bert_spc_cnn': BERT_SPC_CNN,
-        'lcf_bert': LCF_BERT
+        'lcf_bert': LCF_BERT,
+        'bert_bag_cnn':BERT_BAG_CNN
     }
 
 input_colses = {
@@ -36,6 +44,7 @@ input_colses = {
         'bert_spc_lay': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
         'bert_spc_rnn': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
         'bert_spc_cnn': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
+        'bert_bag_cnn': ['sentence_pair_bert_indices', 'bert_segments_ids', 'attention_mask_pair'],
         'lcf_bert': ['sentence_pair_bert_indices', 'bert_segments_ids', 'sentence_bert_indices', 'speaker_bert_indices', 'attention_mask_pair'],
     }
     
@@ -83,7 +92,7 @@ parser.add_argument("--adam_epsilon", default=1e-8, type=float, help="Epsilon fo
 parser.add_argument('--cross_val_fold', default=5, type=int, help='k-fold cross validation')
 parser.add_argument('--max_grad_norm', type=float, default=1.0, help='clip gradients at this value')
 parser.add_argument('--cuda', default=0, type=str)
-parser.add_argument('--transdata', default=False, type=bool)
+parser.add_argument('--datatype', default=None, type=str, choices=['transdata', 'diadata'])
 parser.add_argument('--attention_hops', default=5, type=int)
 parser.add_argument('--adv_type', default=None, type=str, help='fgm, pgd')
 parser.add_argument('--criterion', default=None, type=str, help='loss choice', choices=['focalloss', None])
@@ -94,11 +103,13 @@ parser.add_argument('--num_filters', default=256, type=int)
 parser.add_argument('--local_context_focus', default='cdm', type=str, help='local context focus mode, cdw or cdm')
 parser.add_argument('--SRD', default=3, type=int, help='semantic-relative-distance, see the paper of LCF-BERT model')
 parser.add_argument('--date', default='date', type=str)
-parser.add_argument('--fold_n', default=0, type=str)
+parser.add_argument('--fold_n', default=0, type=int)
 parser.add_argument('--pseudo', default='False', type=str)
+parser.add_argument('--rnntype', default='LSTM', type=str, choices=['LSTM', 'GRU', 'RNN'])
 opt = parser.parse_args()
 opt.model_class = model_classes[opt.model_name]
 opt.inputs_cols = input_colses[opt.model_name]
 opt.initializer = initializers[opt.initializer]
 opt.optimizer = optimizers[opt.optimizer]
+os.environ["CUDA_VISIBLE_DEVICES"] = opt.cuda
 opt.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') if opt.device is None else torch.device(opt.device)
