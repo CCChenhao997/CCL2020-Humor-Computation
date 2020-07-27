@@ -1,3 +1,4 @@
+import re
 import pandas as pd
 from tqdm import tqdm
 
@@ -16,7 +17,10 @@ def data_process(input_path, output_path):
         for i, line in tqdm(enumerate(f.readlines())):
             if ': ' in line and 'Scene' not in line and 'SCENE' not in line and line[0] not in ['(', '[']:
                 speaker, _, sentence = line.partition(": ")
-                if len(speaker.split()) <= 4 and len(sentence.split()) <= 80 and sentence.strip() not in raw_list:
+                sentence = re.sub('(\(.*?\))', '', sentence)
+                if len(speaker.split()) <= 4 and 2 <= len(sentence.split()) <= 80 and \
+                    sentence.strip() not in raw_list and sentence.strip() not in sentence_list:
+                        
                     idx += 1
                     idx_list.append(idx)
                     speaker_list.append(speaker.strip())

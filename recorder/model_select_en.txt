@@ -33,3 +33,12 @@ en_fold_1: ./recorder/第五周/en_aug_pseudo/bert_spc_0719_Linear/bert_spc_en_f
 en_fold_2: ./recorder/第五周/en_aug_pseudo/bert_spc_0719_Linear/bert_spc_en_fold_2_aug_pseudo_f1_0.6864_f1_0_0.8352_f1_1_0.5376_acc_0.7570_score_1.2946
 en_fold_3: ./recorder/第五周/en_aug_pseudo/bert_spc_0719_Linear/bert_spc_en_fold_3_aug_pseudo_f1_0.7041_f1_0_0.8627_f1_1_0.5455_acc_0.7892_score_1.3346
 en_fold_4: ./recorder/第五周/en_aug_pseudo/bert_spc_0719_Linear/bert_spc_en_fold_4_aug_pseudo_f1_0.6957_f1_0_0.8709_f1_1_0.5205_acc_0.7965_score_1.3170
+
+
+第六周提交记录：
+日期：0726
+en_fold_0: ./recorder/第六周/en_dia_aug/bert_spc_logstep=5_nn.Linear_wd=0.01_waccscore/bert_spc_en_fold_0_dia_aug_f1_0.6985_f1_0_0.8448_f1_1_0.5521_acc_0.7695_score_1.3216 
+en_fold_1: ./recorder/第六周/en_dia_aug/bert_spc_logstep=5_nn.Linear_wd=0.01_waccscore/bert_spc_en_fold_1_dia_aug_f1_0.6814_f1_0_0.8158_f1_1_0.5469_acc_0.7381_score_1.2850
+en_fold_3: ./recorder/第六周/en_dia_aug/bert_spc_logstep=5_nn.Linear_wd=0.01_waccscore/bert_spc_en_fold_3_dia_aug_f1_0.6816_f1_0_0.8536_f1_1_0.5096_acc_0.7745_score_1.2842
+en_fold_4: ./recorder/第六周/en_dia_aug/bert_spc_logstep=5_nn.Linear_wd=0.01_waccscore/bert_spc_en_fold_4_dia_aug_f1_0.7180_f1_0_0.8673_f1_1_0.5687_acc_0.7970_score_1.3657
+概率求和投票

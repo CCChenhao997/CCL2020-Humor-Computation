@@ -5,3 +5,4 @@ data_StratifiedKFold_666_pseudo/*
 predict_data/*
 submit/*
 transdata_StratifiedKFold_666/*
+utils/.ipynb_checkpoints
