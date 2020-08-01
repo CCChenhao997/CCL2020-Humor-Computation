@@ -15,14 +15,15 @@ def work(pres):
 
 if __name__=="__main__":
 
-    model_name = 'bert_spc_cnn'
-    date = '0718'
+    model_name = 'bert_spc'
+    date = '0725'
     dataset = 'en'
     pseudo = False
+
     if pseudo:
-        DATA_DIR = './predict_data/aug_data/{}_{}_pseudo/{}/'.format(model_name, date, dataset)
+        DATA_DIR = '../predict_data/aug_data/{}_{}_pseudo/{}/'.format(model_name, date, dataset)
     else:
-        DATA_DIR = './predict_data/aug_data/{}_{}/{}/'.format(model_name, date, dataset)
+        DATA_DIR = '../predict_data/aug_data/{}_{}/{}/'.format(model_name, date, dataset)
     files = os.listdir(DATA_DIR)
     files = [i for i in files]
 
@@ -35,13 +36,14 @@ if __name__=="__main__":
             df_merged = df_merged.merge(tmp_df, how='left', on='ID')
         print(df_merged.shape)
         i += 1
+    
+    df_data = pd.read_csv('../data/preprocess/en_aug.tsv', sep='\t', names=["ID", "Speaker", "Sentence"])
+    ID_list = [i for i in range(df_data.shape[0])]
+    df_data['ID'] = pd.Series(ID_list)
 
-    # pprint(df_merged.head(20))
-
-    df_data = pd.read_csv('./data/preprocess/en_aug.tsv', sep='\t', names=["ID", "Speaker", "Sentence"])
     # pprint(df_data.head(5))
     df_merged = df_merged.merge(df_data, how='left', on='ID')
-    # pprint(df_merged.head(5))
+    # pprint(df_merged.shape)
 
     speaker_list, sentence_list, label_list = [], [], []
     for index, line in df_merged.iterrows():
@@ -63,13 +65,22 @@ if __name__=="__main__":
             sentence_list.append(sentence)
             label_list.append(label)
     
+    print(len(speaker_list), len(sentence_list), len(label_list))
     idx_list = [i for i in range(len(speaker_list))]
-    final_data = list(zip(idx_list, speaker_list, sentence_list, label_list))
-    final_data = pd.DataFrame(final_data, columns=['ID', 'Speaker', 'Sentence', 'Label'])
-    # pprint(final_data.head(10))
+    # final_data = list(zip(idx_list, speaker_list, sentence_list, label_list))
+    # final_data = pd.DataFrame(final_data, columns=['ID', 'Speaker', 'Sentence', 'Label'])
+    final_data = list(zip(idx_list, idx_list, idx_list, speaker_list, sentence_list, label_list))
+    final_data = pd.DataFrame(final_data, columns=['ID', 'Dialogue_id', 'Utterance_id', 'Speaker', 'Sentence', 'Label'])
+    
 
     if pseudo:
-        sava_path = './predict_data/aug_data/{}_{}_pseudo/vote/{}-{}-voted.csv'.format(model_name, date, model_name, dataset)
+        save_path = '../predict_data/aug_data/{}_{}_pseudo/vote'.format(model_name, date)
     else:
-        sava_path = './predict_data/aug_data/{}_{}/vote/{}-{}-voted.csv'.format(model_name, date, model_name, dataset)
-    final_data.to_csv(sava_path, index=None, header=None, sep='\t')
+        save_path = '../predict_data/aug_data/{}_{}/vote'.format(model_name, date)
+    if not os.path.exists(save_path):
+        os.makedirs(save_path, mode=0o777)
+    
+    file_path = '{}/{}-{}-voted.csv'.format(save_path, model_name, dataset)
+    # final_data.to_csv(file_path, index=None, header=None, sep='\t')
+    final_data.to_csv(file_path, index=None)
+    print("写入成功!")
