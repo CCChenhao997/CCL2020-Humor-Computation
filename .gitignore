@@ -6,3 +6,4 @@ predict_data/*
 submit/*
 transdata_StratifiedKFold_666/*
 utils/.ipynb_checkpoints
+EDA.ipynb
