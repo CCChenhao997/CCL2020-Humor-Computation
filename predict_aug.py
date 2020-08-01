@@ -9,9 +9,9 @@ import numpy as np
 import pandas as pd
 from torch.utils.data import DataLoader
 from torch.nn.utils import clip_grad_norm_
-from transformers import BertModel, AutoModel, XLMRobertaModel, GPT2Model, RobertaModel
-from data_utils import Tokenizer4Bert, BertSentenceDataset
-from config import model_classes, input_colses, initializers, optimizers, opt
+from transformers import BertModel, BertConfig
+from utils.data_utils import Tokenizer4Bert, BertSentenceDataset
+from config import opt
 
 
 class Inferer:
@@ -31,7 +31,7 @@ class Inferer:
         torch.autograd.set_grad_enabled(False)
 
         testset = BertSentenceDataset(opt.dataset_file['test'], tokenizer, target_dim=self.opt.polarities_dim, opt=opt)
-        self.test_dataloader = DataLoader(dataset=testset, batch_size=opt.batch_size, shuffle=False)
+        self.test_dataloader = DataLoader(dataset=testset, batch_size=opt.eval_batch_size, shuffle=False)
 
     def evaluate(self):
         self.model.eval()
@@ -49,11 +49,21 @@ if __name__=="__main__":
     model_state_dict_paths = {
         
         'en':{
-            '0': './recorder/第五周/en_uuu_ordered/bert_spc_cnn_0718_epoch=5/bert_spc_cnn_en_fold_0_uuu_f1_0.6718_f1_0_0.8318_f1_1_0.5117_acc_0.7498_score_1.2616',
-            '1': './recorder/第五周/en_uuu_ordered/bert_spc_cnn_0718_epoch=5/bert_spc_cnn_en_fold_1_uuu_f1_0.6661_f1_0_0.8437_f1_1_0.4886_acc_0.7605_score_1.2491',
-            '2': './recorder/第五周/en_uuu_ordered/bert_spc_cnn_0718_epoch=5/bert_spc_cnn_en_fold_2_uuu_f1_0.6798_f1_0_0.8463_f1_1_0.5132_acc_0.7664_score_1.2796',
-            '3': './recorder/第五周/en_uuu_ordered/bert_spc_cnn_0718_epoch=5/bert_spc_cnn_en_fold_3_uuu_f1_0.6781_f1_0_0.8548_f1_1_0.5015_acc_0.7751_score_1.2766',
-            '4': './recorder/第五周/en_uuu_ordered/bert_spc_cnn_0718_epoch=5/bert_spc_cnn_en_fold_4_uuu_f1_0.6779_f1_0_0.8620_f1_1_0.4937_acc_0.7831_score_1.2769',
+            # '0': './recorder/第五周/en_uuu_ordered/bert_spc_cnn_0718_epoch=5/bert_spc_cnn_en_fold_0_uuu_f1_0.6718_f1_0_0.8318_f1_1_0.5117_acc_0.7498_score_1.2616',
+            # '1': './recorder/第五周/en_uuu_ordered/bert_spc_cnn_0718_epoch=5/bert_spc_cnn_en_fold_1_uuu_f1_0.6661_f1_0_0.8437_f1_1_0.4886_acc_0.7605_score_1.2491',
+            # '2': './recorder/第五周/en_uuu_ordered/bert_spc_cnn_0718_epoch=5/bert_spc_cnn_en_fold_2_uuu_f1_0.6798_f1_0_0.8463_f1_1_0.5132_acc_0.7664_score_1.2796',
+            # '3': './recorder/第五周/en_uuu_ordered/bert_spc_cnn_0718_epoch=5/bert_spc_cnn_en_fold_3_uuu_f1_0.6781_f1_0_0.8548_f1_1_0.5015_acc_0.7751_score_1.2766',
+            # '4': './recorder/第五周/en_uuu_ordered/bert_spc_cnn_0718_epoch=5/bert_spc_cnn_en_fold_4_uuu_f1_0.6779_f1_0_0.8620_f1_1_0.4937_acc_0.7831_score_1.2769',
+            # '0': './recorder/第五周/en_aug_pseudo/bert_spc_0719_Linear/bert_spc_en_fold_0_aug_pseudo_f1_0.6877_f1_0_0.8413_f1_1_0.5342_acc_0.7632_score_1.2974',
+            # '1': './recorder/第五周/en_aug_pseudo/bert_spc_0719_Linear/bert_spc_en_fold_1_aug_pseudo_f1_0.6789_f1_0_0.8542_f1_1_0.5037_acc_0.7746_score_1.2783',
+            # '2': './recorder/第五周/en_aug_pseudo/bert_spc_0719_Linear/bert_spc_en_fold_2_aug_pseudo_f1_0.6864_f1_0_0.8352_f1_1_0.5376_acc_0.7570_score_1.2946',
+            # '3': './recorder/第五周/en_aug_pseudo/bert_spc_0719_Linear/bert_spc_en_fold_3_aug_pseudo_f1_0.7041_f1_0_0.8627_f1_1_0.5455_acc_0.7892_score_1.3346',
+            # '4': './recorder/第五周/en_aug_pseudo/bert_spc_0719_Linear/bert_spc_en_fold_4_aug_pseudo_f1_0.6957_f1_0_0.8709_f1_1_0.5205_acc_0.7965_score_1.3170'
+            '0': './recorder/第七周/en_dia_aug/bert_spc_0730_bert_train_TD_0730/bert_spc_en_fold_0_dia_aug_f1_0.7141_f1_0_0.8604_f1_1_0.5678_acc_0.7890_score_1.3568',
+            '1': './recorder/第七周/en_dia_aug/bert_spc_0730_bert_train_TD_0730/bert_spc_en_fold_1_dia_aug_f1_0.6843_f1_0_0.8162_f1_1_0.5524_acc_0.7395_score_1.2918',
+            # '2': './recorder/第五周/en_aug_pseudo/bert_spc_0719_Linear/bert_spc_en_fold_2_aug_pseudo_f1_0.6864_f1_0_0.8352_f1_1_0.5376_acc_0.7570_score_1.2946',
+            '3': './recorder/第七周/en_aug/bert_spc_0729_bertT/bert_spc_en_fold_3_aug_f1_0.6960_f1_0_0.8588_f1_1_0.5331_acc_0.7831_score_1.3163',
+            '4': './recorder/第七周/en_dia_aug/bert_spc_0730_bert_train_TD_0730/bert_spc_en_fold_4_dia_aug_f1_0.7095_f1_0_0.8586_f1_1_0.5604_acc_0.7860_score_1.3465'
         },
 
         'cn':{
@@ -74,14 +84,14 @@ if __name__=="__main__":
         }
     }
 
-    pretrained_bert_names = {
-        'cn':  './pretrain_models/ERNIE_cn',
-        'en':  'bert-base-uncased'
-    }
+    # pretrained_bert_names = {
+    #     'cn':  './pretrain_models/ERNIE_cn',
+    #     'en':  'bert-base-uncased'
+    # }
 
     # opt = get_parameters()
     opt.dataset_file = dataset_files[opt.dataset]
-    opt.pretrained_bert_name = pretrained_bert_names[opt.dataset]
+    # opt.pretrained_bert_name = pretrained_bert_names[opt.dataset]
     opt.state_dict_path = model_state_dict_paths[opt.dataset][opt.fold_n]
 
     inf = Inferer(opt)

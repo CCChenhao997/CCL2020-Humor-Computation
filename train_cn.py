@@ -11,17 +11,17 @@ import time
 from time import strftime, localtime
 from sklearn import metrics
 import numpy as np
-from transformers import BertModel, AutoModel, RobertaModel, AlbertModel
+from transformers import BertModel, AutoModel, RobertaModel, AlbertModel, AutoTokenizer
 from transformers import AdamW
 from torch.utils.data import DataLoader, random_split, ConcatDataset
 from torch.nn.utils import clip_grad_norm_
 from models_utils.loss_helper import FocalLoss
 from models_utils.adv_helper import FGM, PGD
-from data_utils import Tokenizer4Bert, BertSentenceDataset, get_time_dif, collate_wrapper
+from utils.data_utils import Tokenizer4Bert, BertSentenceDataset, get_time_dif, collate_wrapper
 from sklearn.model_selection import StratifiedKFold, KFold
 from collections import defaultdict
 from transformers import get_linear_schedule_with_warmup
-from config import model_classes, input_colses, initializers, optimizers, opt, logger
+from config import opt, logger
 
 
 def setup_seed(seed):
@@ -37,18 +37,19 @@ class Instructor:
     def __init__(self, opt):
         self.opt = opt
         tokenizer = Tokenizer4Bert(opt.max_length, opt.pretrained_bert_name)
-        bert_model = BertModel.from_pretrained(opt.pretrained_bert_name, output_hidden_states=True)
         # bert_model = AutoModel.from_pretrained(opt.pretrained_bert_name)
+        bert_model = BertModel.from_pretrained(opt.pretrained_bert_name, output_hidden_states=True)
+        # bert_model = AlbertModel.from_pretrained(opt.pretrained_bert_name)
         # self.pretrained_bert_state_dict = bert_model.state_dict()
         self.model = opt.model_class(bert_model, opt).to(opt.device)
         trainset = BertSentenceDataset(opt.dataset_file['train'], tokenizer, target_dim=self.opt.polarities_dim, opt=opt)
         testset = BertSentenceDataset(opt.dataset_file['test'], tokenizer, target_dim=self.opt.polarities_dim, opt=opt)
         if opt.datatype == 'diadata':
-            self.train_dataloader = DataLoader(dataset=trainset, batch_size=opt.batch_size, shuffle=True, collate_fn=collate_wrapper)   # , drop_last=True
-            self.test_dataloader = DataLoader(dataset=testset, batch_size=opt.batch_size, shuffle=False, collate_fn=collate_wrapper)
+            self.train_dataloader = DataLoader(dataset=trainset, batch_size=opt.train_batch_size, shuffle=True, collate_fn=collate_wrapper)   # , drop_last=True
+            self.test_dataloader = DataLoader(dataset=testset, batch_size=opt.eval_batch_size, shuffle=False, collate_fn=collate_wrapper)
         else:
-            self.train_dataloader = DataLoader(dataset=trainset, batch_size=opt.batch_size, shuffle=True)   # , drop_last=True
-            self.test_dataloader = DataLoader(dataset=testset, batch_size=opt.batch_size, shuffle=False)
+            self.train_dataloader = DataLoader(dataset=trainset, batch_size=opt.train_batch_size, shuffle=True)   # , drop_last=True
+            self.test_dataloader = DataLoader(dataset=testset, batch_size=opt.eval_batch_size, shuffle=False)
 
         if opt.device.type == 'cuda':
             logger.info('cuda memory allocated: {}'.format(torch.cuda.memory_allocated(self.opt.device.index)))
@@ -87,20 +88,17 @@ class Instructor:
             {'params': [p for n, p in model.named_parameters() if any(
                 nd in n for nd in no_decay)], 'weight_decay': 0.0}
         ]
-        optimizer = AdamW(optimizer_grouped_parameters,
+        optimizer = AdamW(optimizer_grouped_parameters,                
                         lr=opt.learning_rate, eps=opt.adam_epsilon, weight_decay=self.opt.l2reg)
         # scheduler = WarmupLinearSchedule(
         #     optimizer, warmup_steps=args.warmup_steps, t_total=t_total)
-
         return optimizer
     
     def _train(self, model, optimizer, max_test_acc_overall=0, max_w_acc_overall=0, max_f1_overall=0, max_score_overall=0):
         # 对抗训练
         if self.opt.adv_type == 'fgm':
-            logger.info('对抗选择：fgm')
             fgm = FGM(self.model)
         elif self.opt.adv_type == 'pgd':
-            logger.info('对抗选择：pgd')
             pgd = PGD(self.model)
             K = 3
 
@@ -110,7 +108,7 @@ class Instructor:
         else:
             logger.info('criterion选择：CrossEntropyLoss')
             criterion = nn.CrossEntropyLoss()
-
+        
         if 'bert' in self.opt.model_name:
             optimizer = self.get_bert_optimizer(self.opt, self.model)
         else:
@@ -124,11 +122,14 @@ class Instructor:
                 raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
             self.model, optimizer = amp.initialize(self.model, optimizer, opt_level=self.opt.fp16_opt_level)
 
-        num_training_steps = len(self.train_dataloader) * self.opt.num_epoch
-        scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=num_training_steps*0.1, num_training_steps=num_training_steps)
+        if opt.scheduler:
+            logger.info('使用scheduler')
+            num_training_steps = len(self.train_dataloader) * self.opt.num_epoch
+            scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=num_training_steps*0.1, num_training_steps=num_training_steps)
 
         max_test_acc, max_w_acc, max_f1, max_f1_1, max_score, global_step = 0, 0, 0, 0, 0, 0
-
+        max_weight_score = 0
+        
         for epoch in range(self.opt.num_epoch):
             logger.info('>' * 60)
             logger.info('epoch: {}'.format(epoch))
@@ -145,7 +146,6 @@ class Instructor:
                 loss = criterion(outputs, targets) 
 
                 if self.opt.fp16:
-                    logger.info('混合精度计算')
                     with amp.scale_loss(loss, optimizer) as scaled_loss:
                         scaled_loss.backward()
                 else:
@@ -172,11 +172,11 @@ class Instructor:
                         loss_adv = criterion(outputs, targets)
                         loss_adv.backward()              # 反向传播，并在正常的grad基础上，累加对抗训练的梯度
                     pgd.restore()                        # 恢复embedding参数
-                
-                # torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.opt.max_grad_norm)
-                optimizer.step()
-                scheduler.step()
 
+                optimizer.step()
+                if opt.scheduler:
+                    scheduler.step()
+                
                 if global_step % self.opt.log_step == 0:    # 每隔opt.log_step就输出日志
                     n_correct += (torch.argmax(outputs, -1) == targets).sum().item()
                     n_total += len(outputs)
@@ -185,6 +185,7 @@ class Instructor:
                     # score = w_acc*0.2 + f1
                     # score = test_acc*0.15 + f1_0*0.35 + f1_1
                     score = test_acc + f1_1
+                    weight_score = test_acc*0.5 + f1_1
 
                     if test_acc > max_test_acc:
                         max_test_acc = test_acc
@@ -197,9 +198,9 @@ class Instructor:
                     
                     if score > max_score:
                         max_score = score
-                    
-                    if f1_1 > max_f1_1:
-                        max_f1_1 = f1_1
+
+                    if weight_score > max_weight_score:
+                        max_weight_score = weight_score
                         if not os.path.exists('state_dict'):
                             os.mkdir('state_dict')
                         # path = './state_dict/{0}_{1}_score_{2:.4f}_f1_{3:.4f}'.format(self.opt.model_name, self.opt.dataset, score, f1)
@@ -207,11 +208,8 @@ class Instructor:
                         logger.info('>> The {0} has been promoted on {1} with score {2:.4f}'.format(self.opt.model_name, self.opt.dataset, score))
                         self.best_model = copy.deepcopy(self.model)
 
-
-                    # logger.info('loss: {:.4f}, acc: {:.4f}, test_acc: {:.4f}, w_acc: {:.4f}, f1: {:.4f}, score: {:.4f}'\
-                    #             .format(loss.item(), train_acc, test_acc, w_acc, f1, score))
-                    logger.info('loss: {:.4f}, acc: {:.4f}, test_acc: {:.4f}, f1: {:.4f}, f1_0: {:.4f}, f1_1: {:.4f}'\
-                                .format(loss.item(), train_acc, test_acc, f1, f1_0, f1_1))
+                    logger.info('loss: {:.4f}, acc: {:.4f}, test_acc: {:.4f}, f1: {:.4f}, f1_0: {:.4f}, f1_1: {:.4f}, weight_score: {:.4f}, score: {:.4f}'\
+                                .format(loss.item(), train_acc, test_acc, f1, f1_0, f1_1, weight_score, score))
 
         return max_test_acc, max_w_acc, max_f1, max_score, path
     
@@ -226,6 +224,7 @@ class Instructor:
                 t_inputs = [t_sample_batched[col].to(self.opt.device) for col in self.opt.inputs_cols]
                 t_targets = t_sample_batched['polarity'].to(self.opt.device)
                 t_outputs = self.model(t_inputs)
+                
                 n_test_correct += (torch.argmax(t_outputs, -1) == t_targets).sum().item()
                 n_test_total += len(t_outputs)
                 
@@ -245,7 +244,9 @@ class Instructor:
         # w_acc = self.weighted_acc(dialog_id, labels, predic)
         
         if show_results:
+            # report = metrics.classification_report(labels, predic, digits=4)
             report = metrics.classification_report(labels, predic, digits=4)
+            # confusion = metrics.confusion_matrix(labels, predic)
             confusion = metrics.confusion_matrix(labels, predic)
             return report, confusion, f1, f1_0, f1_1
 
@@ -253,6 +254,7 @@ class Instructor:
 
     def weighted_acc(self, ids, labels, predict_labels):
         # compute the weighted_accuracy
+        # ids, labels, predict_labels = ids.tolist(), labels.tolist(), predict_labels.tolist()
         n_test_total = len(ids)
         acc_dict = defaultdict(defaultdict)
         total_acc = 0
@@ -315,91 +317,153 @@ class Instructor:
 def main():
     
     dataset_files = {
-        # * en-data_dia
-        'en_fold_0_dia': {
-            'train': './data/data_StratifiedKFold_666_dia/en/data_fold_0/train.csv',
-            'test': './data/data_StratifiedKFold_666_dia/en/data_fold_0/test.csv'
+        # * cn-data
+        'cn_fold_0': {
+            'train': './data/data_StratifiedKFold_666/cn/data_fold_0/train.csv',
+            'test': './data/data_StratifiedKFold_666/cn/data_fold_0/test.csv'
         },
-        'en_fold_1_dia': {
-            'train': './data/data_StratifiedKFold_666_dia/en/data_fold_1/train.csv',
-            'test': './data/data_StratifiedKFold_666_dia/en/data_fold_1/test.csv'
+        'cn_fold_1': {
+            'train': './data/data_StratifiedKFold_666/cn/data_fold_1/train.csv',
+            'test': './data/data_StratifiedKFold_666/cn/data_fold_1/test.csv'
         },
-        'en_fold_2_dia': {
-            'train': './data/data_StratifiedKFold_666_dia/en/data_fold_2/train.csv',
-            'test': './data/data_StratifiedKFold_666_dia/en/data_fold_2/test.csv'
+        'cn_fold_2': {
+            'train': './data/data_StratifiedKFold_666/cn/data_fold_2/train.csv',
+            'test': './data/data_StratifiedKFold_666/cn/data_fold_2/test.csv'
         },
-        'en_fold_3_dia': {
-            'train': './data/data_StratifiedKFold_666_dia/en/data_fold_3/train.csv',
-            'test': './data/data_StratifiedKFold_666_dia/en/data_fold_3/test.csv'
+        'cn_fold_3': {
+            'train': './data/data_StratifiedKFold_666/cn/data_fold_3/train.csv',
+            'test': './data/data_StratifiedKFold_666/cn/data_fold_3/test.csv'
         },
-        'en_fold_4_dia': {
-            'train': './data/data_StratifiedKFold_666_dia/en/data_fold_4/train.csv',
-            'test': './data/data_StratifiedKFold_666_dia/en/data_fold_4/test.csv'
+        'cn_fold_4': {
+            'train': './data/data_StratifiedKFold_666/cn/data_fold_4/train.csv',
+            'test': './data/data_StratifiedKFold_666/cn/data_fold_4/test.csv'
         },
-        # * en-data
-        'en_fold_0': {
-            'train': './data/data_StratifiedKFold_666/en/data_fold_0/train.csv',
-            'test': './data/data_StratifiedKFold_666/en/data_fold_0/test.csv'
+        # pseudo
+        'cn_fold_0_pseudo': {
+            'train': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_0/train.csv',
+            'test': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_0/test.csv'
         },
-        'en_fold_1': {
-            'train': './data/data_StratifiedKFold_666/en/data_fold_1/train.csv',
-            'test': './data/data_StratifiedKFold_666/en/data_fold_1/test.csv'
+        'cn_fold_1_pseudo': {
+            'train': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_1/train.csv',
+            'test': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_1/test.csv'
         },
-        'en_fold_2': {
-            'train': './data/data_StratifiedKFold_666/en/data_fold_2/train.csv',
-            'test': './data/data_StratifiedKFold_666/en/data_fold_2/test.csv'
+        'cn_fold_2_pseudo': {
+            'train': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_2/train.csv',
+            'test': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_2/test.csv'
         },
-        'en_fold_3': {
-            'train': './data/data_StratifiedKFold_666/en/data_fold_3/train.csv',
-            'test': './data/data_StratifiedKFold_666/en/data_fold_3/test.csv'
+        'cn_fold_3_pseudo': {
+            'train': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_3/train.csv',
+            'test': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_3/test.csv'
         },
-        'en_fold_4': {
-            'train': './data/data_StratifiedKFold_666/en/data_fold_4/train.csv',
-            'test': './data/data_StratifiedKFold_666/en/data_fold_4/test.csv'
+        'cn_fold_4_pseudo': {
+            'train': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_4/train.csv',
+            'test': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_4/test.csv'
         },
 
-        # * en-data_aug
-        'en_fold_0_aug': {
-            'train': './data/data_StratifiedKFold_666_aug_0721/en/data_fold_0/train.csv',
-            'test': './data/data_StratifiedKFold_666_aug_0721/en/data_fold_0/test.csv'
+        'cn_fold_0_uuu': {
+            'train': './data/data_StratifiedKFold_666_uuu/cn/data_fold_0/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu/cn/data_fold_0/test.csv'
         },
-        'en_fold_1_aug': {
-            'train': './data/data_StratifiedKFold_666_aug_0721/en/data_fold_1/train.csv',
-            'test': './data/data_StratifiedKFold_666_aug_0721/en/data_fold_1/test.csv'
+        'cn_fold_1_uuu': {
+            'train': './data/data_StratifiedKFold_666_uuu/cn/data_fold_1/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu/cn/data_fold_1/test.csv'
         },
-        'en_fold_2_aug': {
-            'train': './data/data_StratifiedKFold_666_aug_0721/en/data_fold_2/train.csv',
-            'test': './data/data_StratifiedKFold_666_aug_0721/en/data_fold_2/test.csv'
+        'cn_fold_2_uuu': {
+            'train': './data/data_StratifiedKFold_666_uuu/cn/data_fold_2/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu/cn/data_fold_2/test.csv'
         },
-        'en_fold_3_aug': {
-            'train': './data/data_StratifiedKFold_666_aug_0721/en/data_fold_3/train.csv',
-            'test': './data/data_StratifiedKFold_666_aug_0721/en/data_fold_3/test.csv'
+        'cn_fold_3_uuu': {
+            'train': './data/data_StratifiedKFold_666_uuu/cn/data_fold_3/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu/cn/data_fold_3/test.csv'
         },
-        'en_fold_4_aug': {
-            'train': './data/data_StratifiedKFold_666_aug_0721/en/data_fold_4/train.csv',
-            'test': './data/data_StratifiedKFold_666_aug_0721/en/data_fold_4/test.csv'
+        'cn_fold_4_uuu': {
+            'train': './data/data_StratifiedKFold_666_uuu/cn/data_fold_4/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu/cn/data_fold_4/test.csv'
         },
-        # * en-data_aug_pseudo
-        'en_fold_0_aug_pseudo': {
-            'train': './data/data_StratifiedKFold_666_aug_pseudo_0719/en/data_fold_0/train.csv',
-            'test': './data/data_StratifiedKFold_666_aug_pseudo_0719/en/data_fold_0/test.csv'
+        # * cn-data_aug
+        'cn_fold_0_aug': {
+            'train': './data/data_StratifiedKFold_666_aug/cn/data_fold_0/train.csv',
+            'test': './data/data_StratifiedKFold_666_aug/cn/data_fold_0/test.csv'
         },
-        'en_fold_1_aug_pseudo': {
-            'train': './data/data_StratifiedKFold_666_aug_pseudo_0719/en/data_fold_1/train.csv',
-            'test': './data/data_StratifiedKFold_666_aug_pseudo_0719/en/data_fold_1/test.csv'
+        'cn_fold_1_aug': {
+            'train': './data/data_StratifiedKFold_666_aug/cn/data_fold_1/train.csv',
+            'test': './data/data_StratifiedKFold_666_aug/cn/data_fold_1/test.csv'
         },
-        'en_fold_2_aug_pseudo': {
-            'train': './data/data_StratifiedKFold_666_aug_pseudo_0719/en/data_fold_2/train.csv',
-            'test': './data/data_StratifiedKFold_666_aug_pseudo_0719/en/data_fold_2/test.csv'
+        'cn_fold_2_aug': {
+            'train': './data/data_StratifiedKFold_666_aug/cn/data_fold_2/train.csv',
+            'test': './data/data_StratifiedKFold_666_aug/cn/data_fold_2/test.csv'
         },
-        'en_fold_3_aug_pseudo': {
-            'train': './data/data_StratifiedKFold_666_aug_pseudo_0719/en/data_fold_3/train.csv',
-            'test': './data/data_StratifiedKFold_666_aug_pseudo_0719/en/data_fold_3/test.csv'
+        'cn_fold_3_aug': {
+            'train': './data/data_StratifiedKFold_666_aug/cn/data_fold_3/train.csv',
+            'test': './data/data_StratifiedKFold_666_aug/cn/data_fold_3/test.csv'
         },
-        'en_fold_4_aug_pseudo': {
-            'train': './data/data_StratifiedKFold_666_aug_pseudo_0719/en/data_fold_4/train.csv',
-            'test': './data/data_StratifiedKFold_666_aug_pseudo_0719/en/data_fold_4/test.csv'
-        }
+        'cn_fold_4_aug': {
+            'train': './data/data_StratifiedKFold_666_aug/cn/data_fold_4/train.csv',
+            'test': './data/data_StratifiedKFold_666_aug/cn/data_fold_4/test.csv'
+        },
+
+        'cn_fold_0_uuu_aug': {
+            'train': './data/data_StratifiedKFold_666_uuu_aug/cn/data_fold_0/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu_aug/cn/data_fold_0/test.csv'
+        },
+        'cn_fold_1_uuu_aug': {
+            'train': './data/data_StratifiedKFold_666_uuu_aug/cn/data_fold_1/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu_aug/cn/data_fold_1/test.csv'
+        },
+        'cn_fold_2_uuu_aug': {
+            'train': './data/data_StratifiedKFold_666_uuu_aug/cn/data_fold_2/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu_aug/cn/data_fold_2/test.csv'
+        },
+        'cn_fold_3_uuu_aug': {
+            'train': './data/data_StratifiedKFold_666_uuu_aug/cn/data_fold_3/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu_aug/cn/data_fold_3/test.csv'
+        },
+        'cn_fold_4_uuu_aug': {
+            'train': './data/data_StratifiedKFold_666_uuu_aug/cn/data_fold_4/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu_aug/cn/data_fold_4/test.csv'
+        },
+        # * cn-data_dia
+        'cn_fold_0_dia': {
+            'train': './data/data_StratifiedKFold_666_dia/cn/data_fold_0/train.csv',
+            'test': './data/data_StratifiedKFold_666_dia/cn/data_fold_0/test.csv'
+        },
+        'cn_fold_1_dia': {
+            'train': './data/data_StratifiedKFold_666_dia/cn/data_fold_1/train.csv',
+            'test': './data/data_StratifiedKFold_666_dia/cn/data_fold_1/test.csv'
+        },
+        'cn_fold_2_dia': {
+            'train': './data/data_StratifiedKFold_666_dia/cn/data_fold_2/train.csv',
+            'test': './data/data_StratifiedKFold_666_dia/cn/data_fold_2/test.csv'
+        },
+        'cn_fold_3_dia': {
+            'train': './data/data_StratifiedKFold_666_dia/cn/data_fold_3/train.csv',
+            'test': './data/data_StratifiedKFold_666_dia/cn/data_fold_3/test.csv'
+        },
+        'cn_fold_4_dia': {
+            'train': './data/data_StratifiedKFold_666_dia/cn/data_fold_4/train.csv',
+            'test': './data/data_StratifiedKFold_666_dia/cn/data_fold_4/test.csv'
+        },
+        # * cn-data_filtered
+        'cn_fold_0_fil': {
+            'train': './data/data_StratifiedKFold_666_filtered/cn/data_fold_0/train.csv',
+            'test': './data/data_StratifiedKFold_666_filtered/cn/data_fold_0/test.csv'
+        },
+        'cn_fold_1_fil': {
+            'train': './data/data_StratifiedKFold_666_filtered/cn/data_fold_1/train.csv',
+            'test': './data/data_StratifiedKFold_666_filtered/cn/data_fold_1/test.csv'
+        },
+        'cn_fold_2_fil': {
+            'train': './data/data_StratifiedKFold_666_filtered/cn/data_fold_2/train.csv',
+            'test': './data/data_StratifiedKFold_666_filtered/cn/data_fold_2/test.csv'
+        },
+        'cn_fold_3_fil': {
+            'train': './data/data_StratifiedKFold_666_filtered/cn/data_fold_3/train.csv',
+            'test': './data/data_StratifiedKFold_666_filtered/cn/data_fold_3/test.csv'
+        },
+        'cn_fold_4_fil': {
+            'train': './data/data_StratifiedKFold_666_filtered/cn/data_fold_4/train.csv',
+            'test': './data/data_StratifiedKFold_666_filtered/cn/data_fold_4/test.csv'
+        },
     }
     
     opt.dataset_file = dataset_files[opt.dataset]

@@ -30,7 +30,7 @@ class Inferer:
         torch.autograd.set_grad_enabled(False)
 
         testset = BertSentenceDataset(opt.dataset_file['test'], tokenizer, target_dim=self.opt.polarities_dim, opt=opt)
-        self.test_dataloader = DataLoader(dataset=testset, batch_size=opt.batch_size, shuffle=False)
+        self.test_dataloader = DataLoader(dataset=testset, batch_size=opt.eval_batch_size, shuffle=False)
 
     def evaluate(self):
         self.model.eval()
