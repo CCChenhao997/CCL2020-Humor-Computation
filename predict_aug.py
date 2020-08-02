@@ -100,7 +100,7 @@ if __name__=="__main__":
 
     predict_df = pd.DataFrame(list(zip(id, predict_label)))
 
-    if opt.pseudo != "False":
+    if opt.pseudo:
         save_path = "./predict_data/aug_data/{}_{}_pseudo/{}".format(opt.model_name, opt.date, opt.dataset)
     else:
         save_path = "./predict_data/aug_data/{}_{}/{}".format(opt.model_name, opt.date, opt.dataset)

@@ -91,11 +91,17 @@ if __name__=="__main__":
         },
 
         'cn':{
-            '0': './recorder/第六周/pick/cn/bert_spc_cn_fold_0_uuu_aug_f1_0.6662_f1_0_0.7927_f1_1_0.5397_acc_0.7141_score_1.2538',
-            '1': './recorder/第六周/pick/cn/bert_spc_cn_fold_1_uuu_aug_f1_0.6535_f1_0_0.7897_f1_1_0.5172_acc_0.7070_score_1.2242',
-            '2': './recorder/第六周/pick/cn/bert_spc_cn_fold_2_uuu_aug_f1_0.6541_f1_0_0.7851_f1_1_0.5232_acc_0.7037_score_1.2269',
-             # '3': './recorder/第五周/pick_0719/cn/after_pseudo/bert_spc_lay_cn_fold_3_f1_0.6481_f1_0_0.7767_f1_1_0.5196_score_1.2147',
-            '4': './recorder/第六周/pick/cn/bert_spc_cn_fold_4_uuu_aug_f1_0.6581_f1_0_0.7787_f1_1_0.5375_acc_0.7006_score_1.2381',
+            # '0': './recorder/第六周/pick/cn/bert_spc_cn_fold_0_uuu_aug_f1_0.6662_f1_0_0.7927_f1_1_0.5397_acc_0.7141_score_1.2538',
+            # '1': './recorder/第六周/pick/cn/bert_spc_cn_fold_1_uuu_aug_f1_0.6535_f1_0_0.7897_f1_1_0.5172_acc_0.7070_score_1.2242',
+            # '2': './recorder/第六周/pick/cn/bert_spc_cn_fold_2_uuu_aug_f1_0.6541_f1_0_0.7851_f1_1_0.5232_acc_0.7037_score_1.2269',
+            #  # '3': './recorder/第五周/pick_0719/cn/after_pseudo/bert_spc_lay_cn_fold_3_f1_0.6481_f1_0_0.7767_f1_1_0.5196_score_1.2147',
+            # '4': './recorder/第六周/pick/cn/bert_spc_cn_fold_4_uuu_aug_f1_0.6581_f1_0_0.7787_f1_1_0.5375_acc_0.7006_score_1.2381',
+            # * 七周
+            '0': './recorder/第七周/pick/cn/bert_spc_rev_cn_fold_0_pseudo_f1_0.6770_f1_0_0.8228_f1_1_0.5312_acc_0.7428_score_1.2740',
+            '1': './recorder/第七周/pick/cn/bert_spc_rev_cn_fold_1_pseudo_f1_0.6904_f1_0_0.8095_f1_1_0.5713_acc_0.7362_score_1.3075',
+            '2': './recorder/第七周/pick/cn/bert_spc_rev_cn_fold_2_pseudo_f1_0.6723_f1_0_0.8055_f1_1_0.5391_acc_0.7264_score_1.2656',
+            '3': './recorder/第七周/pick/cn/bert_spc_rev_cn_fold_3_pseudo_f1_0.6874_f1_0_0.8207_f1_1_0.5542_acc_0.7442_score_1.2984',
+            '4': './recorder/第七周/pick/cn/bert_spc_rev_cn_fold_4_pseudo_f1_0.6702_f1_0_0.8100_f1_1_0.5303_acc_0.7295_score_1.2598',
         }
         
     }
@@ -129,7 +135,7 @@ if __name__=="__main__":
 
     predict_df = pd.DataFrame(list(zip(id, predict_label)))
 
-    if opt.pseudo != "False":
+    if opt.pseudo:
         save_path = "./predict_data/{}_{}_pseudo/{}".format(opt.model_name, opt.date, opt.dataset)
     else:
         save_path = "./predict_data/{}_{}/{}".format(opt.model_name, opt.date, opt.dataset)
