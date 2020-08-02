@@ -35,3 +35,12 @@ cn_fold_2: recorder/第五周/cn_raw_ordered/bert_spc_lay_0714_dropout_0_decay_0
 cn_fold_3: recorder/第四周/bert_spc_lay_0711_pseudo/cn/cn_uuu_0.3/bert_spc_lay_cn_fold_3_f1_0.6481_f1_0_0.7767_f1_1_0.5196_score_1.2147
 cn_fold_4: recorder/第四周/bert_spc_lay_0711_pseudo/cn/cn_uuu_0.3/bert_spc_lay_cn_fold_4_f1_0.6549_f1_0_0.7772_f1_1_0.5327
 
+日期:0802
+dataset:cn
+pretrain_model: ernie, ernie_T
+cn_fold_0: recorder/第七周/cn_pseudo_0627/bert_spc_rev_lr3_dr3_log_5_ernie_T/bert_spc_rev_cn_fold_0_pseudo_f1_0.6770_f1_0_0.8228_f1_1_0.5312_acc_0.7428_score_1.2740
+cn_fold_1: recorder/第七周/cn_pseudo_0627/bert_spc_rev_lr3_dr3_log_5_ernie_T/bert_spc_rev_cn_fold_1_pseudo_f1_0.6904_f1_0_0.8095_f1_1_0.5713_acc_0.7362_score_1.3075
+cn_fold_2: recorder/第七周/cn_pseudo_0627/bert_spc_rev_lr3_dr3_log_5_ernie_T/bert_spc_rev_cn_fold_2_pseudo_f1_0.6723_f1_0_0.8055_f1_1_0.5391_acc_0.7264_score_1.2656
+cn_fold_3: recorder/第七周/cn_pseudo_0627/bert_spc_rev_lr3_dr5_log_25/bert_spc_rev_cn_fold_3_pseudo_f1_0.6874_f1_0_0.8207_f1_1_0.5542_acc_0.7442_score_1.2984
+cn_fold_4: recorder/第七周/cn_pseudo_0627/bert_spc_rev_lr3_dr3_log_5_ernie_T_adv/bert_spc_rev_cn_fold_4_pseudo_f1_0.6702_f1_0_0.8100_f1_1_0.5303_acc_0.7295_score_1.2598
+
