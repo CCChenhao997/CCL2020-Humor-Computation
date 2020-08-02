@@ -78,11 +78,16 @@ if __name__=="__main__":
             # '2': './recorder/第六周/en_dia_aug/bert_spc_logstep=5_nn.Linear_waccscore/bert_spc_en_fold_2_dia_aug_f1_0.6689_f1_0_0.8399_f1_1_0.4980_acc_0.7572_score_1.2552',
             # '3': './recorder/第六周/en_dia_aug/bert_spc_logstep=5_nn.Linear_waccscore/bert_spc_en_fold_3_dia_aug_f1_0.6718_f1_0_0.8428_f1_1_0.5007_acc_0.7609_score_1.2616',
             # '4': './recorder/第六周/en_dia_aug/bert_spc_logstep=5_nn.Linear_waccscore/bert_spc_en_fold_4_dia_aug_f1_0.7157_f1_0_0.8552_f1_1_0.5761_acc_0.7841_score_1.3602',
-            '0': './recorder/第六周/en_dia_aug/bert_spc_logstep=5_nn.Linear_wd=0.01_waccscore/bert_spc_en_fold_0_dia_aug_f1_0.6985_f1_0_0.8448_f1_1_0.5521_acc_0.7695_score_1.3216',
-            '1': './recorder/第六周/en_dia_aug/bert_spc_logstep=5_nn.Linear_wd=0.01_waccscore/bert_spc_en_fold_1_dia_aug_f1_0.6814_f1_0_0.8158_f1_1_0.5469_acc_0.7381_score_1.2850',
-            # '2': './recorder/第六周/en_dia_aug/bert_spc_logstep=5_nn.Linear_waccscore/bert_spc_en_fold_2_dia_aug_f1_0.6689_f1_0_0.8399_f1_1_0.4980_acc_0.7572_score_1.2552',
-            '3': './recorder/第六周/en_dia_aug/bert_spc_logstep=5_nn.Linear_wd=0.01_waccscore/bert_spc_en_fold_3_dia_aug_f1_0.6816_f1_0_0.8536_f1_1_0.5096_acc_0.7745_score_1.2842',
-            '4': './recorder/第六周/en_dia_aug/bert_spc_logstep=5_nn.Linear_wd=0.01_waccscore/bert_spc_en_fold_4_dia_aug_f1_0.7180_f1_0_0.8673_f1_1_0.5687_acc_0.7970_score_1.3657',
+            # * 第六周
+            # '0': './recorder/第六周/en_dia_aug/bert_spc_logstep=5_nn.Linear_wd=0.01_waccscore/bert_spc_en_fold_0_dia_aug_f1_0.6985_f1_0_0.8448_f1_1_0.5521_acc_0.7695_score_1.3216',
+            # '1': './recorder/第六周/en_dia_aug/bert_spc_logstep=5_nn.Linear_wd=0.01_waccscore/bert_spc_en_fold_1_dia_aug_f1_0.6814_f1_0_0.8158_f1_1_0.5469_acc_0.7381_score_1.2850',
+            # '3': './recorder/第六周/en_dia_aug/bert_spc_logstep=5_nn.Linear_wd=0.01_waccscore/bert_spc_en_fold_3_dia_aug_f1_0.6816_f1_0_0.8536_f1_1_0.5096_acc_0.7745_score_1.2842',
+            # '4': './recorder/第六周/en_dia_aug/bert_spc_logstep=5_nn.Linear_wd=0.01_waccscore/bert_spc_en_fold_4_dia_aug_f1_0.7180_f1_0_0.8673_f1_1_0.5687_acc_0.7970_score_1.3657',
+            '0': './recorder/第七周/en_dia_aug/bert_spc_0730_bertTD/bert_spc_en_fold_0_dia_aug_f1_0.7141_f1_0_0.8604_f1_1_0.5678_acc_0.7890_score_1.3568',
+            '1': './recorder/第七周/en_dia_aug_0730/bert_spc_bert0728T/bert_spc_en_fold_1_dia_aug_f1_0.6906_f1_0_0.8388_f1_1_0.5424_acc_0.7616_score_1.3040',
+            '2': './recorder/第七周/en_aug/bert_spc_rev_0801_bertT/bert_spc_en_fold_3_aug_f1_0.6992_f1_0_0.8496_f1_1_0.5489_acc_0.7744_score_1.3233',
+            '3': './recorder/第七周/en_dia_aug/bert_spc_0729_bertT/bert_spc_en_fold_4_dia_aug_f1_0.7164_f1_0_0.8563_f1_1_0.5765_acc_0.7854_score_1.3619',
+            '4': './recorder/第七周/en_aug/bert_spc_rev_0801_bertT_adv/bert_spc_en_fold_4_aug_f1_0.7133_f1_0_0.8659_f1_1_0.5608_acc_0.7945_score_1.3553',
         },
 
         'cn':{
@@ -104,14 +109,14 @@ if __name__=="__main__":
         }
     }
 
-    pretrained_bert_names = {
-        'cn':  './pretrain_models/ERNIE_cn',
-        'en':  'bert-base-uncased'
-    }
+    # pretrained_bert_names = {
+    #     'cn':  './pretrain_models/ERNIE_cn',
+    #     'en':  'bert-base-uncased'
+    # }
     
     # opt = get_parameters()
     opt.dataset_file = dataset_files[opt.dataset]
-    opt.pretrained_bert_name = pretrained_bert_names[opt.dataset]
+    # opt.pretrained_bert_name = pretrained_bert_names[opt.dataset]
     opt.state_dict_path = model_state_dict_paths[opt.dataset][opt.fold_n]
 
     inf = Inferer(opt)

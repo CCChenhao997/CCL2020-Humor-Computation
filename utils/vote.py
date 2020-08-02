@@ -24,8 +24,10 @@ def simple_vote(model_name, date, dataset, pseudo=False):
     i = 0
     for fname in files:
         tmp_df = pd.read_csv(DATA_DIR + fname)
+        tmp_df = pd.DataFrame(tmp_df, columns['ID', 'Label'])
         if i == 0:
             df_merged = pd.read_csv(DATA_DIR + fname)
+            df_merged = pd.DataFrame(df_merged, columns['ID', 'Label'])
         if i > 0:
             df_merged = df_merged.merge(tmp_df, how='left', on='ID')
         print(df_merged.shape)
@@ -59,8 +61,10 @@ def aug_vote(model_name, date, dataset, pseudo=False):
     i = 0
     for fname in files:
         tmp_df = pd.read_csv(DATA_DIR + fname)
+        tmp_df = pd.DataFrame(tmp_df, columns['ID', 'Label'])
         if i == 0:
             df_merged = pd.read_csv(DATA_DIR + fname)
+            df_merged = pd.DataFrame(df_merged, columns['ID', 'Label'])
         if i > 0:
             df_merged = df_merged.merge(tmp_df, how='left', on='ID')
         print(df_merged.shape)
@@ -77,18 +81,18 @@ def aug_vote(model_name, date, dataset, pseudo=False):
         label_2 = int(line[2])
         label_3 = int(line[3])
         label_4 = int(line[4])
-        # label_5 = int(line[5])
+        label_5 = int(line[5])
         speaker = line[5]
         sentence = line[6]
         label = None
-        # if label_1 + label_2 + label_3 + label_4 + label_5 == 5:
-        #     label = 1
-        # elif label_1 == label_2 == label_3 == label_4 == label_5 == 0:
-        #     label = 0
-        if label_1 + label_2 + label_3 + label_4 == 4:
+        if label_1 + label_2 + label_3 + label_4 + label_5 == 5:
             label = 1
-        elif label_1 + label_2 + label_3 + label_4 == 0:
+        elif label_1 == label_2 == label_3 == label_4 == label_5 == 0:
             label = 0
+        # if label_1 + label_2 + label_3 + label_4 == 4:
+        #     label = 1
+        # elif label_1 + label_2 + label_3 + label_4 == 0:
+        #     label = 0
 
         if label is not None:
             speaker_list.append(speaker)
@@ -168,10 +172,10 @@ def prob_vote(model_name, date, dataset, pseudo=False):
 if __name__=="__main__":
 
     model_name = 'bert_spc'
-    date = '0730'
+    date = '0802'
     dataset = 'en'
     pseudo = False
     # simple_vote(model_name, date, dataset, pseudo)
-    # prob_vote(model_name, date, dataset, pseudo)
-    aug_vote(model_name, date, dataset, pseudo)
+    prob_vote(model_name, date, dataset, pseudo)
+    # aug_vote(model_name, date, dataset, pseudo)
     
