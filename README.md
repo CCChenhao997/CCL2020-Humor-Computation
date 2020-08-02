@@ -19,9 +19,9 @@ CCL2020 第二届“小牛杯”幽默计算——情景喜剧笑点识别
 - [ ] F1优化
 - [ ] EMA 指数滑动平均 [[参考]](https://zhuanlan.zhihu.com/p/51672655?utm_source=wechat_session&utm_medium=social&utm_oi=602621868809916416)
 - [ ] 预训练的 Word Embedding 与 Bert 结合
-- [ ] BERT Post-Training [[参考]](https://github.com/howardhsu/BERT-for-RRC-ABSA)
+- [x] BERT Post-Training [[参考]](https://github.com/howardhsu/BERT-for-RRC-ABSA)
 - [ ] GHM-C loss
-- [ ] dialogue level作为输入（一个dialogue作为一个batch）
+- [x] dialogue level作为输入（一个dialogue作为一个batch）
 
 ### 数据部分 
 
@@ -31,13 +31,14 @@ CCL2020 第二届“小牛杯”幽默计算——情景喜剧笑点识别
 - [x] Speaker_Pre-sentence + Speaker_Post-sentence
 - [x] 欠采样
 - [x] 过采样
-- [x] 数据增强 [[参考1]](https://zhuanlan.zhihu.com/p/145521255?utm_source=wechat_session&utm_medium=social&utm_oi=602621868809916416) [[参考2]](https://github.com/tongchangD/text_data_enhancement_with_LaserTagger?utm_source=wechat_session&utm_medium=social&utm_oi=602621868809916416) [[参考3]](https://github.com/QData/TextAttack) [[参考4]](https://github.com/flyingwaters/EDA-Easier-Data-Augment-for-chinese) [[参考5]](https://github.com/zhanlaoban/eda_nlp_for_Chinese)
-- [ ] 数据清洗（英文的unicode \92）
+- [x] 数据增强EDA
+- [ ] 数据增强UDA
+- [x] 数据清洗
 
 
 
 ### 训练加速
 
 - [ ] 多卡并行训练
-- [x] 双精度训练
+- [x] 混合精度训练
 
