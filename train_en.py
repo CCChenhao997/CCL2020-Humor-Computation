@@ -106,7 +106,7 @@ class Instructor:
 
         if self.opt.criterion == 'focalloss':
             logger.info('criterion选择：focalloss')
-            criterion = FocalLoss(num_class=2, alpha=0.25, gamma=2, smooth=0.1)
+            criterion = FocalLoss(num_class=opt.polarities_dim, alpha=opt.alpha, gamma=opt.gamma, smooth=opt.smooth)
         else:
             logger.info('criterion选择：CrossEntropyLoss')
             criterion = nn.CrossEntropyLoss()
@@ -279,7 +279,8 @@ class Instructor:
 
     def _test(self, model_path):
         # test
-        self.model.load_state_dict(torch.load(model_path))
+        # self.model.load_state_dict(torch.load(model_path))
+        self.model = self.best_model
         self.model.eval()
         test_report, test_confusion, f1, f1_0, f1_1 = self._evaluate(show_results=True)
         logger.info("Precision, Recall and F1-Score...")
@@ -307,7 +308,11 @@ class Instructor:
             max_f1_overall = max(max_f1, max_f1_overall)
             max_score_overall = max(max_score, max_score_overall)
             # * 模型存储
-            torch.save(self.best_model.state_dict(), model_path)
+            if opt.notsavemodel:
+                txt_path = model_path + '.txt'
+                os.mknod(txt_path)
+            else:
+                torch.save(self.best_model.state_dict(), model_path)
             logger.info('>> saved: {}'.format(model_path))
             logger.info('#' * 100)
         logger.info('max_test_acc_overall:{:.4f}'.format(max_test_acc_overall))
@@ -447,26 +452,26 @@ def main():
             'train': './data/data_StratifiedKFold_666_filtered/en/data_fold_4/train.csv',
             'test': './data/data_StratifiedKFold_666_filtered/en/data_fold_4/test.csv'
         },
-        # * cn-data_pseudo
-        'cn_fold_0_pseudo': {
-            'train': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_0/train.csv',
-            'test': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_0/test.csv'
+        # * en-data_pseudo
+        'en_fold_0_pseudo': {
+            'train': './data/data_StratifiedKFold_666_pseudo_0627/en/data_fold_0/train.csv',
+            'test': './data/data_StratifiedKFold_666_pseudo_0627/en/data_fold_0/test.csv'
         },
-        'cn_fold_1_pseudo': {
-            'train': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_1/train.csv',
-            'test': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_1/test.csv'
+        'en_fold_1_pseudo': {
+            'train': './data/data_StratifiedKFold_666_pseudo_0627/en/data_fold_1/train.csv',
+            'test': './data/data_StratifiedKFold_666_pseudo_0627/en/data_fold_1/test.csv'
         },
-        'cn_fold_2_pseudo': {
-            'train': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_2/train.csv',
-            'test': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_2/test.csv'
+        'en_fold_2_pseudo': {
+            'train': './data/data_StratifiedKFold_666_pseudo_0627/en/data_fold_2/train.csv',
+            'test': './data/data_StratifiedKFold_666_pseudo_0627/en/data_fold_2/test.csv'
         },
-        'cn_fold_3_pseudo': {
-            'train': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_3/train.csv',
-            'test': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_3/test.csv'
+        'en_fold_3_pseudo': {
+            'train': './data/data_StratifiedKFold_666_pseudo_0627/en/data_fold_3/train.csv',
+            'test': './data/data_StratifiedKFold_666_pseudo_0627/en/data_fold_3/test.csv'
         },
-        'cn_fold_4_pseudo': {
-            'train': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_4/train.csv',
-            'test': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_4/test.csv'
+        'en_fold_4_pseudo': {
+            'train': './data/data_StratifiedKFold_666_pseudo_0627/en/data_fold_4/train.csv',
+            'test': './data/data_StratifiedKFold_666_pseudo_0627/en/data_fold_4/test.csv'
         },
     }
     
