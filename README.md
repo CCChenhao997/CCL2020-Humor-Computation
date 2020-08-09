@@ -10,7 +10,7 @@ CCL2020 第二届“小牛杯”幽默计算——情景喜剧笑点识别
 - [x] 交叉验证（五折或十折）
 - [x] 模型融合 + 伪标签
 - [x] Focalloss + 标签平滑
-- [x] 对抗训练
+- [x] 对抗训练（FGM）
 - [x] 加权Accuracy + F1选择模型
 - [x] bert + 胶囊网络
 - [ ] bert + 图神经网络
@@ -21,7 +21,7 @@ CCL2020 第二届“小牛杯”幽默计算——情景喜剧笑点识别
 - [ ] 预训练的 Word Embedding 与 Bert 结合
 - [x] BERT Post-Training [[参考]](https://github.com/howardhsu/BERT-for-RRC-ABSA)
 - [ ] GHM-C loss
-- [x] dialogue level作为输入（一个dialogue作为一个batch）
+- [ ] Flooding [[参考]](https://mp.weixin.qq.com/s/GpwEu8jTv46LiF6dQeJMQQ)
 
 ### 数据部分 
 
@@ -34,6 +34,7 @@ CCL2020 第二届“小牛杯”幽默计算——情景喜剧笑点识别
 - [x] 数据增强EDA
 - [ ] 数据增强UDA
 - [x] 数据清洗
+- [x] dialogue level作为输入（一个dialogue作为一个batch）
 
 
 
