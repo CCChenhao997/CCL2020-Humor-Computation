@@ -74,7 +74,9 @@ parser.add_argument('--model_name', default='bert_spc', type=str, help=', '.join
 parser.add_argument('--dataset', default='cn', type=str)
 parser.add_argument('--optimizer', default='adam', type=str, help=', '.join(optimizers.keys()))
 parser.add_argument('--initializer', default='xavier_uniform_', type=str, help=', '.join(initializers.keys()))
-parser.add_argument('--learning_rate', default=0.002, type=float)    # 1e-3
+parser.add_argument('--bert_lr', default=2e-5, type=float)    # 1e-3
+parser.add_argument('--layers_lr', default=0.002, type=float)
+parser.add_argument('--diff_lr', default=False, action='store_true')
 parser.add_argument('--dropout', default=0.5, type=float)
 parser.add_argument('--l2reg', default=1e-5, type=float)    # 1e-5
 parser.add_argument('--num_epoch', default=20, type=int)
@@ -85,7 +87,7 @@ parser.add_argument('--hidden_dim', default=300, type=int)
 parser.add_argument('--position_dim', default=100, type=int)
 parser.add_argument('--polarities_dim', default=2, type=int, help='2')
 parser.add_argument('--max_length', default=80, type=int)
-parser.add_argument('--dia_maxlength', default=16, type=int)
+parser.add_argument('--dia_maxlength', default=32, type=int)
 parser.add_argument('--device', default=None, type=str, help='cpu, cuda')
 parser.add_argument('--repeats', default=1, type=int)
 parser.add_argument('--seed', default=0, type=int)

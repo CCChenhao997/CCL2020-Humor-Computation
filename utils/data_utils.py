@@ -8,10 +8,10 @@ import torch
 from datetime import timedelta
 import numpy as np
 import pandas as pd
-from config import logger
+from config import logger, opt
 from transformers import BertTokenizer, AutoTokenizer, RobertaTokenizer, AlbertTokenizer
 from torch.utils.data import Dataset
-from config import opt
+from pprint import pprint
 
 def get_time_dif(start_time):
     """获取已使用时间"""
@@ -106,7 +106,7 @@ def parse_rawdata_dialogue(data_path):
         dialogue_id = int(line[1])
         if dialogue_id == prelogue_id:
             count += 1
-            if count > opt.dia_maxlength:
+            if count >= opt.dia_maxlength:
                 global_id += 1
                 count = 0
         else:
@@ -137,6 +137,7 @@ def parse_rawdata_dialogue(data_path):
             all_data[global_id].append(data)
         # data = {'dialogue_id': dialogue_id, 'speaker': speaker, 'sentence': sentence, 'polarity': polarity}
         # all_data.append(data)
+    # pprint(all_data)
     return all_data
 
 

@@ -82,16 +82,49 @@ class Instructor:
     def get_bert_optimizer(self, opt, model):
         # Prepare optimizer and schedule (linear warmup and decay)
         no_decay = ['bias', 'LayerNorm.weight']
-        optimizer_grouped_parameters = [
-            {'params': [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
-            'weight_decay': opt.weight_decay},
-            {'params': [p for n, p in model.named_parameters() if any(
-                nd in n for nd in no_decay)], 'weight_decay': 0.0}
-        ]
-        optimizer = AdamW(optimizer_grouped_parameters,                
-                        lr=opt.learning_rate, eps=opt.adam_epsilon, weight_decay=self.opt.l2reg)
-        # scheduler = WarmupLinearSchedule(
-        #     optimizer, warmup_steps=args.warmup_steps, t_total=t_total)
+        diff_part = ["bert.embeddings", "bert.encoder"]
+
+        if opt.diff_lr:
+            logger.info("layered learning rate on")
+            optimizer_grouped_parameters = [
+                {
+                    "params": [p for n, p in model.named_parameters() if
+                            not any(nd in n for nd in no_decay) and any(nd in n for nd in diff_part)],
+                    "weight_decay": opt.weight_decay,
+                    "lr": opt.bert_lr
+                },
+                {
+                    "params": [p for n, p in model.named_parameters() if
+                            any(nd in n for nd in no_decay) and any(nd in n for nd in diff_part)],
+                    "weight_decay": 0.0,
+                    "lr": opt.bert_lr
+                },
+                {
+                    "params": [p for n, p in model.named_parameters() if
+                            not any(nd in n for nd in no_decay) and not any(nd in n for nd in diff_part)],
+                    "weight_decay": opt.weight_decay,
+                    "lr": opt.layers_lr
+                },
+                {
+                    "params": [p for n, p in model.named_parameters() if
+                            any(nd in n for nd in no_decay) and not any(nd in n for nd in diff_part)],
+                    "weight_decay": 0.0,
+                    "lr": opt.layers_lr
+                },
+            ]
+            optimizer = AdamW(optimizer_grouped_parameters, eps=opt.adam_epsilon)
+
+        else:
+            logger.info("bert learning rate on")
+            optimizer_grouped_parameters = [
+                {'params': [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
+                'weight_decay': opt.weight_decay},
+                {'params': [p for n, p in model.named_parameters() if any(
+                    nd in n for nd in no_decay)], 'weight_decay': 0.0}
+            ]
+            optimizer = AdamW(optimizer_grouped_parameters,
+                        lr=opt.bert_lr, eps=opt.adam_epsilon)   #  weight_decay=self.opt.l2reg
+
         return optimizer
     
     def _train(self, model, optimizer, max_test_acc_overall=0, max_w_acc_overall=0, max_f1_overall=0, max_score_overall=0):
@@ -135,6 +168,7 @@ class Instructor:
             logger.info('epoch: {}'.format(epoch))
             n_correct, n_total = 0, 0
             for i_batch, sample_batched in enumerate(self.train_dataloader):
+                
                 global_step += 1
                 # switch model to training mode, clear gradient accumulators
                 self.model.train()

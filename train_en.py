@@ -81,16 +81,48 @@ class Instructor:
     def get_bert_optimizer(self, opt, model):
         # Prepare optimizer and schedule (linear warmup and decay)
         no_decay = ['bias', 'LayerNorm.weight']
-        optimizer_grouped_parameters = [
-            {'params': [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
-            'weight_decay': opt.weight_decay},
-            {'params': [p for n, p in model.named_parameters() if any(
-                nd in n for nd in no_decay)], 'weight_decay': 0.0}
-        ]
-        optimizer = AdamW(optimizer_grouped_parameters,
-                        lr=opt.learning_rate, eps=opt.adam_epsilon, weight_decay=self.opt.l2reg)
-        # scheduler = WarmupLinearSchedule(
-        #     optimizer, warmup_steps=args.warmup_steps, t_total=t_total)
+        diff_part = ["bert.embeddings", "bert.encoder"]
+
+        if opt.diff_lr:
+            logger.info("layered learning rate on")
+            optimizer_grouped_parameters = [
+                {
+                    "params": [p for n, p in model.named_parameters() if
+                            not any(nd in n for nd in no_decay) and any(nd in n for nd in diff_part)],
+                    "weight_decay": opt.weight_decay,
+                    "lr": opt.bert_lr
+                },
+                {
+                    "params": [p for n, p in model.named_parameters() if
+                            any(nd in n for nd in no_decay) and any(nd in n for nd in diff_part)],
+                    "weight_decay": 0.0,
+                    "lr": opt.bert_lr
+                },
+                {
+                    "params": [p for n, p in model.named_parameters() if
+                            not any(nd in n for nd in no_decay) and not any(nd in n for nd in diff_part)],
+                    "weight_decay": opt.weight_decay,
+                    "lr": opt.layers_lr
+                },
+                {
+                    "params": [p for n, p in model.named_parameters() if
+                            any(nd in n for nd in no_decay) and not any(nd in n for nd in diff_part)],
+                    "weight_decay": 0.0,
+                    "lr": opt.layers_lr
+                },
+            ]
+            optimizer = AdamW(optimizer_grouped_parameters, eps=opt.adam_epsilon)
+
+        else:
+            logger.info("bert learning rate on")
+            optimizer_grouped_parameters = [
+                {'params': [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
+                'weight_decay': opt.weight_decay},
+                {'params': [p for n, p in model.named_parameters() if any(
+                    nd in n for nd in no_decay)], 'weight_decay': 0.0}
+            ]
+            optimizer = AdamW(optimizer_grouped_parameters,
+                        lr=opt.bert_lr, eps=opt.adam_epsilon)   #  weight_decay=self.opt.l2reg
 
         return optimizer
     
@@ -115,7 +147,7 @@ class Instructor:
             optimizer = self.get_bert_optimizer(self.opt, self.model)
         else:
             _params = filter(lambda p: p.requires_grad, self.model.parameters())
-            optimizer = self.opt.optimizer(_params, lr=self.opt.learning_rate, weight_decay=self.opt.l2reg)
+            optimizer = self.opt.optimizer(_params, lr=self.opt.layers_lr, weight_decay=self.opt.l2reg)
 
         if self.opt.fp16:
             try:
@@ -142,9 +174,9 @@ class Instructor:
                 self.model.train()
                 optimizer.zero_grad()
                 inputs = [sample_batched[col].to(self.opt.device) for col in self.opt.inputs_cols]
+            
                 outputs = self.model(inputs)
                 targets = sample_batched['polarity'].to(self.opt.device)
-
                 loss = criterion(outputs, targets) 
 
                 if self.opt.fp16:
@@ -412,24 +444,24 @@ def main():
         },
         # * en-data_aug_pseudo
         'en_fold_0_aug_pseudo': {
-            'train': './data/data_StratifiedKFold_666_aug_pseudo_0719/en/data_fold_0/train.csv',
-            'test': './data/data_StratifiedKFold_666_aug_pseudo_0719/en/data_fold_0/test.csv'
+            'train': './data/data_StratifiedKFold_666_aug_pseudo_0815/en/data_fold_0/train.csv',
+            'test': './data/data_StratifiedKFold_666_aug_pseudo_0815/en/data_fold_0/test.csv'
         },
         'en_fold_1_aug_pseudo': {
-            'train': './data/data_StratifiedKFold_666_aug_pseudo_0719/en/data_fold_1/train.csv',
-            'test': './data/data_StratifiedKFold_666_aug_pseudo_0719/en/data_fold_1/test.csv'
+            'train': './data/data_StratifiedKFold_666_aug_pseudo_0815/en/data_fold_1/train.csv',
+            'test': './data/data_StratifiedKFold_666_aug_pseudo_0815/en/data_fold_1/test.csv'
         },
         'en_fold_2_aug_pseudo': {
-            'train': './data/data_StratifiedKFold_666_aug_pseudo_0719/en/data_fold_2/train.csv',
-            'test': './data/data_StratifiedKFold_666_aug_pseudo_0719/en/data_fold_2/test.csv'
+            'train': './data/data_StratifiedKFold_666_aug_pseudo_0815/en/data_fold_2/train.csv',
+            'test': './data/data_StratifiedKFold_666_aug_pseudo_0815/en/data_fold_2/test.csv'
         },
         'en_fold_3_aug_pseudo': {
-            'train': './data/data_StratifiedKFold_666_aug_pseudo_0719/en/data_fold_3/train.csv',
-            'test': './data/data_StratifiedKFold_666_aug_pseudo_0719/en/data_fold_3/test.csv'
+            'train': './data/data_StratifiedKFold_666_aug_pseudo_0815/en/data_fold_3/train.csv',
+            'test': './data/data_StratifiedKFold_666_aug_pseudo_0815/en/data_fold_3/test.csv'
         },
         'en_fold_4_aug_pseudo': {
-            'train': './data/data_StratifiedKFold_666_aug_pseudo_0719/en/data_fold_4/train.csv',
-            'test': './data/data_StratifiedKFold_666_aug_pseudo_0719/en/data_fold_4/test.csv'
+            'train': './data/data_StratifiedKFold_666_aug_pseudo_0815/en/data_fold_4/train.csv',
+            'test': './data/data_StratifiedKFold_666_aug_pseudo_0815/en/data_fold_4/test.csv'
         },
         # * en-data_filtered
         'en_fold_0_fil': {
