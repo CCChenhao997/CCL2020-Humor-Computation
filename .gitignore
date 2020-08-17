@@ -9,3 +9,4 @@ utils/.ipynb_checkpoints
 EDA.ipynb
 spider/data_spider
 pretrain/data_humor_pretain
+predict_data_ubuntu/*

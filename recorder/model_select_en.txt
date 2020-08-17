@@ -53,3 +53,11 @@ en_fold_1: ./recorder/第七周/en_dia_aug_0730/bert_spc_bert0728T/bert_spc_en_f
 en_fold_3: ./recorder/第七周/en_aug/bert_spc_rev_0801_bertT/bert_spc_en_fold_3_aug_f1_0.6992_f1_0_0.8496_f1_1_0.5489_acc_0.7744_score_1.3233
 en_fold_4: ./recorder/第七周/en_dia_aug/bert_spc_0729_bertT/bert_spc_en_fold_4_dia_aug_f1_0.7164_f1_0_0.8563_f1_1_0.5765_acc_0.7854_score_1.3619
 en_fold_4: ./recorder/第七周/en_aug/bert_spc_rev_0801_bertT_adv/bert_spc_en_fold_4_aug_f1_0.7133_f1_0_0.8659_f1_1_0.5608_acc_0.7945_score_1.3553
+
+第九周提交记录：
+日期：0816
+en_fold_0: ./recorder/第九周/en_dia_aug/bert_spc_lay_0816/bert_spc_lay_en_fold_0_dia_aug_f1_0.7054_f1_0_0.8529_f1_1_0.5579_acc_0.7792_score_1.3371
+en_fold_1: ./recorder/第九周/en_dia_aug/bert_spc_rev_0816/bert_spc_rev_en_fold_1_dia_aug_f1_0.6936_f1_0_0.8379_f1_1_0.5494_acc_0.7616_score_1.3109
+en_fold_2: ./recorder/第九周/en_dia_aug/bert_spc_rev_0816/bert_spc_rev_en_fold_2_dia_aug_f1_0.6654_f1_0_0.8187_f1_1_0.5121_acc_0.7356_score_1.2477
+en_fold_3: ./recorder/第九周/en_dia_aug/bert_spc_rev_0816/bert_spc_rev_en_fold_3_dia_aug_f1_0.6680_f1_0_0.8417_f1_1_0.4943_acc_0.7589_score_1.2531
+en_fold_4: ./recorder/第九周/en_dia_aug/bert_spc_lay_0816/bert_spc_lay_en_fold_4_dia_aug_f1_0.7120_f1_0_0.8440_f1_1_0.5800_acc_0.7725_score_1.3524
