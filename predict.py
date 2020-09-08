@@ -83,11 +83,24 @@ if __name__=="__main__":
             # '1': './recorder/第六周/en_dia_aug/bert_spc_logstep=5_nn.Linear_wd=0.01_waccscore/bert_spc_en_fold_1_dia_aug_f1_0.6814_f1_0_0.8158_f1_1_0.5469_acc_0.7381_score_1.2850',
             # '3': './recorder/第六周/en_dia_aug/bert_spc_logstep=5_nn.Linear_wd=0.01_waccscore/bert_spc_en_fold_3_dia_aug_f1_0.6816_f1_0_0.8536_f1_1_0.5096_acc_0.7745_score_1.2842',
             # '4': './recorder/第六周/en_dia_aug/bert_spc_logstep=5_nn.Linear_wd=0.01_waccscore/bert_spc_en_fold_4_dia_aug_f1_0.7180_f1_0_0.8673_f1_1_0.5687_acc_0.7970_score_1.3657',
-            '0': './recorder/第七周/en_dia_aug/bert_spc_0730_bertTD/bert_spc_en_fold_0_dia_aug_f1_0.7141_f1_0_0.8604_f1_1_0.5678_acc_0.7890_score_1.3568',
-            '1': './recorder/第七周/en_dia_aug_0730/bert_spc_bert0728T/bert_spc_en_fold_1_dia_aug_f1_0.6906_f1_0_0.8388_f1_1_0.5424_acc_0.7616_score_1.3040',
-            '2': './recorder/第七周/en_aug/bert_spc_rev_0801_bertT/bert_spc_en_fold_3_aug_f1_0.6992_f1_0_0.8496_f1_1_0.5489_acc_0.7744_score_1.3233',
-            '3': './recorder/第七周/en_dia_aug/bert_spc_0729_bertT/bert_spc_en_fold_4_dia_aug_f1_0.7164_f1_0_0.8563_f1_1_0.5765_acc_0.7854_score_1.3619',
-            '4': './recorder/第七周/en_aug/bert_spc_rev_0801_bertT_adv/bert_spc_en_fold_4_aug_f1_0.7133_f1_0_0.8659_f1_1_0.5608_acc_0.7945_score_1.3553',
+            # * 第七周
+            # '0': './recorder/第七周/en_dia_aug/bert_spc_0730_bertTD/bert_spc_en_fold_0_dia_aug_f1_0.7141_f1_0_0.8604_f1_1_0.5678_acc_0.7890_score_1.3568',
+            # '1': './recorder/第七周/en_dia_aug_0730/bert_spc_bert0728T/bert_spc_en_fold_1_dia_aug_f1_0.6906_f1_0_0.8388_f1_1_0.5424_acc_0.7616_score_1.3040',
+            # '2': './recorder/第七周/en_aug/bert_spc_rev_0801_bertT/bert_spc_en_fold_3_aug_f1_0.6992_f1_0_0.8496_f1_1_0.5489_acc_0.7744_score_1.3233',
+            # '3': './recorder/第七周/en_dia_aug/bert_spc_0729_bertT/bert_spc_en_fold_4_dia_aug_f1_0.7164_f1_0_0.8563_f1_1_0.5765_acc_0.7854_score_1.3619',
+            # '4': './recorder/第七周/en_aug/bert_spc_rev_0801_bertT_adv/bert_spc_en_fold_4_aug_f1_0.7133_f1_0_0.8659_f1_1_0.5608_acc_0.7945_score_1.3553',
+            # * 第九周
+            # '0': './recorder/第九周/en_dia_aug/bert_spc_lay_0816/bert_spc_lay_en_fold_0_dia_aug_f1_0.7054_f1_0_0.8529_f1_1_0.5579_acc_0.7792_score_1.3371',
+            # '1': './recorder/第九周/en_dia_aug/bert_spc_rev_0816/bert_spc_rev_en_fold_1_dia_aug_f1_0.6936_f1_0_0.8379_f1_1_0.5494_acc_0.7616_score_1.3109',
+            # '2': './recorder/第九周/en_dia_aug/bert_spc_rev_0816/bert_spc_rev_en_fold_2_dia_aug_f1_0.6654_f1_0_0.8187_f1_1_0.5121_acc_0.7356_score_1.2477',
+            # '3': './recorder/第九周/en_dia_aug/bert_spc_rev_0816/bert_spc_rev_en_fold_3_dia_aug_f1_0.6680_f1_0_0.8417_f1_1_0.4943_acc_0.7589_score_1.2531',
+            # '4': './recorder/第九周/en_dia_aug/bert_spc_lay_0816/bert_spc_lay_en_fold_4_dia_aug_f1_0.7120_f1_0_0.8440_f1_1_0.5800_acc_0.7725_score_1.3524',
+            '0': './recorder/第十周/refine_en/dia_aug/en_fold_0/bert_spc_layerlr_0819/bert_spc_en_fold_0_dia_aug_f1_0.7128_f1_0_0.8680_f1_1_0.5576_acc_0.7967_score_1.3542',
+            '1': './recorder/第十周/refine_en/dia_aug/en_fold_1/bert_spc_rev_ce_0819/bert_spc_rev_en_fold_1_dia_aug_f1_0.6958_f1_0_0.8252_f1_1_0.5664_acc_0.7508_score_1.3173',
+            '2': './recorder/第十周/refine_en/dia_aug/en_fold_2/bert_spc_rev_laylr_seed_7777_lr_3e-5_T/bert_spc_rev_en_fold_2_dia_aug_f1_0.6770_f1_0_0.8250_f1_1_0.5290_acc_0.7448_wacc_0.7468_score_1.2737',
+            '3': './recorder/第十周/refine_en/dia_aug_pseudo/en_fold_3/bert_spc_rev_laylr_seed3000_0819/bert_spc_rev_en_fold_3_dia_aug_pseudo_f1_0.6747_f1_0_0.8480_f1_1_0.5015_acc_0.7670_score_1.2685',
+            # '4': './recorder/第十周/refine_en/dia_aug/en_fold_4/bert_spc_lay_laylr_seed3000_0819/bert_spc_lay_en_fold_4_dia_aug_f1_0.7189_f1_0_0.8817_f1_1_0.5561_acc_0.8132_score_1.3693',
+            '5': './recorder/第十周/refine_en/dia_aug/en_fold_4/bert_spc_laylr_seed3000_0819/bert_spc_en_fold_4_dia_aug_f1_0.7189_f1_0_0.8543_f1_1_0.5835_acc_0.7841_score_1.3676',
         },
 
         'cn':{
@@ -102,32 +115,30 @@ if __name__=="__main__":
             '2': './recorder/第七周/pick/cn/bert_spc_rev_cn_fold_2_pseudo_f1_0.6723_f1_0_0.8055_f1_1_0.5391_acc_0.7264_score_1.2656',
             '3': './recorder/第七周/pick/cn/bert_spc_rev_cn_fold_3_pseudo_f1_0.6874_f1_0_0.8207_f1_1_0.5542_acc_0.7442_score_1.2984',
             '4': './recorder/第七周/pick/cn/bert_spc_rev_cn_fold_4_pseudo_f1_0.6702_f1_0_0.8100_f1_1_0.5303_acc_0.7295_score_1.2598',
+            # * 十周
+            # '0': './recorder/第十周/refine_cn/cn_aug/cn_fold_0/bert_spc_cn_fold_0_aug_f1_0.6789_f1_0_0.8222_f1_1_0.5356_acc_0.7429_score_1.2785',
+            # '1': './recorder/第十周/refine_cn/cn_aug_pseudo_enhanced/cn_fold_1/bert_spc_rev_cn_fold_1_aug_pseudo_enhanced_0_f1_0.6670_f1_0_0.8042_f1_1_0.5298_acc_0.7236_score_1.2534',
+            # '2': './recorder/第十周/refine_cn/cn_aug_pseudo/cn_fold_2/bert_spc_rev_cn_fold_2_aug_pseudo_f1_0.6640_f1_0_0.8030_f1_1_0.5249_acc_0.7215_score_1.2464',
+            # '3': './recorder/第十周/refine_cn/cn_aug_pseudo/cn_fold_3/bert_spc_rev_cn_fold_3_aug_pseudo_f1_0.6619_f1_0_0.8134_f1_1_0.5104_acc_0.7298_score_1.2401',
+            # '4': './recorder/第十周/refine_cn/cn_aug_pseudo/cn_fold_4/bert_spc_rev_cn_fold_4_aug_pseudo_f1_0.6673_f1_0_0.8030_f1_1_0.5316_acc_0.7227_score_1.2543',
         }
         
     }
 
     dataset_files = {
         'cn': {
-            'test': './data/preprocess/cn_test.tsv'
+            'test': './data/test_data/cn_test.csv'
         },
         'en': {
-            'test': './data/preprocess/en_test.tsv'
+            'test': './data/test_data/en_test.csv'
         }
     }
-
-    # pretrained_bert_names = {
-    #     'cn':  './pretrain_models/ERNIE_cn',
-    #     'en':  'bert-base-uncased'
-    # }
     
-    # opt = get_parameters()
     opt.dataset_file = dataset_files[opt.dataset]
-    # opt.pretrained_bert_name = pretrained_bert_names[opt.dataset]
     opt.state_dict_path = model_state_dict_paths[opt.dataset][opt.fold_n]
 
     inf = Inferer(opt)
     predict_label, prob = inf.evaluate()
-    # print(prob)
     print(len(prob))
     # exit()
 

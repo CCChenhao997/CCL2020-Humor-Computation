@@ -2,14 +2,17 @@ import copy
 import pandas as pd
 from pprint import pprint
 
+
+
+
 #! en/cn
-dataset = 'cn'
-date = '0711'
+dataset = 'en'
+date = '0819'
 # path = 'bert_spc_lay_0711'
 
 # * 读取五折模型投票的结果
 # pseudo_label_path = './predict_data/{}/vote/bert_spc-{}-voted.csv'.format(path, dataset)
-pseudo_label_path = './predict_data/bert_spc_lay_0711/vote/bert_spc_lay-cn-voted.csv'  # ! 更换
+pseudo_label_path = './predict_data/第九周/bert_spc_rev_0816/vote/bert_spc_rev-en-simple-voted.csv'  # ! 更换
 pseudo_label = pd.read_csv(pseudo_label_path, encoding='utf-8')
 
 # * 读取开发集数据，并打上伪标签
@@ -19,9 +22,9 @@ dev_data['Label'] = pseudo_label[['Label']]
 pseudo_data = dev_data.copy()
 # pprint(pseudo_data.head(5))
 pseudo_data_save_path = './data/pseudo_{}/{}_pseudo.csv'.format(date, dataset)
-# pseudo_data.to_csv(pseudo_data_save_path, index=False, encoding='utf-8')
-pseudo_data.to_csv(pseudo_data_save_path, sep='\t', index=False, header=False, \
-                    columns=['Dialogue_id', 'Speaker', 'Sentence', 'Label'], encoding='utf-8')
+pseudo_data.to_csv(pseudo_data_save_path, index=False, encoding='utf-8')
+# pseudo_data.to_csv(pseudo_data_save_path, sep='\t', index=False, header=False, \
+#                     columns=['Dialogue_id', 'Speaker', 'Sentence', 'Label'], encoding='utf-8')
 
 
 # # * 读取训练集数据，添加上伪标签的开发集数据

@@ -219,7 +219,7 @@ class Instructor:
                     # score = w_acc*0.2 + f1
                     # score = test_acc*0.15 + f1_0*0.35 + f1_1
                     score = test_acc + f1_1
-                    weight_score = test_acc*0.5 + f1_1
+                    weight_score = test_acc + f1_1
 
                     if test_acc > max_test_acc:
                         max_test_acc = test_acc
@@ -379,24 +379,24 @@ def main():
         },
         # pseudo
         'cn_fold_0_pseudo': {
-            'train': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_0/train.csv',
-            'test': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_0/test.csv'
+            'train': './data/data_StratifiedKFold_666_pseudo_0817/cn/data_fold_0/train.csv',
+            'test': './data/data_StratifiedKFold_666_pseudo_0817/cn/data_fold_0/test.csv'
         },
         'cn_fold_1_pseudo': {
-            'train': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_1/train.csv',
-            'test': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_1/test.csv'
+            'train': './data/data_StratifiedKFold_666_pseudo_0817/cn/data_fold_1/train.csv',
+            'test': './data/data_StratifiedKFold_666_pseudo_0817/cn/data_fold_1/test.csv'
         },
         'cn_fold_2_pseudo': {
-            'train': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_2/train.csv',
-            'test': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_2/test.csv'
+            'train': './data/data_StratifiedKFold_666_pseudo_0817/cn/data_fold_2/train.csv',
+            'test': './data/data_StratifiedKFold_666_pseudo_0817/cn/data_fold_2/test.csv'
         },
         'cn_fold_3_pseudo': {
-            'train': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_3/train.csv',
-            'test': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_3/test.csv'
+            'train': './data/data_StratifiedKFold_666_pseudo_0817/cn/data_fold_3/train.csv',
+            'test': './data/data_StratifiedKFold_666_pseudo_0817/cn/data_fold_3/test.csv'
         },
         'cn_fold_4_pseudo': {
-            'train': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_4/train.csv',
-            'test': './data/data_StratifiedKFold_666_pseudo_0627/cn/data_fold_4/test.csv'
+            'train': './data/data_StratifiedKFold_666_pseudo_0817/cn/data_fold_4/train.csv',
+            'test': './data/data_StratifiedKFold_666_pseudo_0817/cn/data_fold_4/test.csv'
         },
 
         'cn_fold_0_uuu': {
@@ -502,6 +502,90 @@ def main():
         'cn_fold_4_fil': {
             'train': './data/data_StratifiedKFold_666_filtered/cn/data_fold_4/train.csv',
             'test': './data/data_StratifiedKFold_666_filtered/cn/data_fold_4/test.csv'
+        },
+        # * cn-data_uuu_pseudo
+        'cn_fold_0_uuu_pseudo': {
+            'train': './data/data_StratifiedKFold_666_uuu_pseudo_0818/cn/data_fold_0/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu_pseudo_0818/cn/data_fold_0/test.csv'
+        },
+        'cn_fold_1_uuu_pseudo': {
+            'train': './data/data_StratifiedKFold_666_uuu_pseudo_0818/cn/data_fold_1/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu_pseudo_0818/cn/data_fold_1/test.csv'
+        },
+        'cn_fold_2_uuu_pseudo': {
+            'train': './data/data_StratifiedKFold_666_uuu_pseudo_0818/cn/data_fold_2/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu_pseudo_0818/cn/data_fold_2/test.csv'
+        },
+        'cn_fold_3_uuu_pseudo': {
+            'train': './data/data_StratifiedKFold_666_uuu_pseudo_0818/cn/data_fold_3/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu_pseudo_0818/cn/data_fold_3/test.csv'
+        },
+        'cn_fold_4_uuu_pseudo': {
+            'train': './data/data_StratifiedKFold_666_uuu_pseudo_0818/cn/data_fold_4/train.csv',
+            'test': './data/data_StratifiedKFold_666_uuu_pseudo_0818/cn/data_fold_4/test.csv'
+        },
+        # * cn_aug_pseudo
+        'cn_fold_0_aug_pseudo': {
+            'train': './data/data_StratifiedKFold_666_aug_pseudo_0821/cn/data_fold_0/train.csv',
+            'test': './data/data_StratifiedKFold_666_aug_pseudo_0821/cn/data_fold_0/test.csv'
+        },
+        'cn_fold_1_aug_pseudo': {
+            'train': './data/data_StratifiedKFold_666_aug_pseudo_0821/cn/data_fold_1/train.csv',
+            'test': './data/data_StratifiedKFold_666_aug_pseudo_0821/cn/data_fold_1/test.csv'
+        },
+        'cn_fold_2_aug_pseudo': {
+            'train': './data/data_StratifiedKFold_666_aug_pseudo_0821/cn/data_fold_2/train.csv',
+            'test': './data/data_StratifiedKFold_666_aug_pseudo_0821/cn/data_fold_2/test.csv'
+        },
+        'cn_fold_3_aug_pseudo': {
+            'train': './data/data_StratifiedKFold_666_aug_pseudo_0821/cn/data_fold_3/train.csv',
+            'test': './data/data_StratifiedKFold_666_aug_pseudo_0821/cn/data_fold_3/test.csv'
+        },
+        'cn_fold_4_aug_pseudo': {
+            'train': './data/data_StratifiedKFold_666_aug_pseudo_0821/cn/data_fold_4/train.csv',
+            'test': './data/data_StratifiedKFold_666_aug_pseudo_0821/cn/data_fold_4/test.csv'
+        },
+        # * cn-data_aug_pseudo_enhanced_0
+        'cn_fold_0_aug_pseudo_enhanced_0': {
+            'train': './data/data_StratifiedKFold_666_aug_pseudo_0821/cn_enhanced_0/data_fold_0/train.csv',
+            'test': './data/data_StratifiedKFold_666_aug_pseudo_0821/cn_enhanced_0/data_fold_0/test.csv'
+        },
+        'cn_fold_1_aug_pseudo_enhanced_0': {
+            'train': './data/data_StratifiedKFold_666_aug_pseudo_0821/cn_enhanced_0/data_fold_1/train.csv',
+            'test': './data/data_StratifiedKFold_666_aug_pseudo_0821/cn_enhanced_0/data_fold_1/test.csv'
+        },
+        'cn_fold_2_aug_pseudo_enhanced_0': {
+            'train': './data/data_StratifiedKFold_666_aug_pseudo_0821/cn_enhanced_0/data_fold_2/train.csv',
+            'test': './data/data_StratifiedKFold_666_aug_pseudo_0821/cn_enhanced_0/data_fold_2/test.csv'
+        },
+        'cn_fold_3_aug_pseudo_enhanced_0': {
+            'train': './data/data_StratifiedKFold_666_aug_pseudo_0821/cn_enhanced_0/data_fold_3/train.csv',
+            'test': './data/data_StratifiedKFold_666_aug_pseudo_0821/cn_enhanced_0/data_fold_3/test.csv'
+        },
+        'cn_fold_4_aug_pseudo_enhanced_0': {
+            'train': './data/data_StratifiedKFold_666_aug_pseudo_0821/cn_enhanced_0/data_fold_4/train.csv',
+            'test': './data/data_StratifiedKFold_666_aug_pseudo_0821/cn_enhanced_0/data_fold_4/test.csv'
+        },
+        # * cn-test-pseudo
+        'cn_fold_0_pseudo_test': {
+            'train': './data/data_StratifiedKFold_666_pseudo_0825_500/cn/data_fold_0/train.csv',
+            'test': './data/data_StratifiedKFold_666_pseudo_0825_500/cn/data_fold_0/test.csv'
+        },
+        'cn_fold_1_pseudo_test': {
+            'train': './data/data_StratifiedKFold_666_pseudo_0825_500/cn/data_fold_1/train.csv',
+            'test': './data/data_StratifiedKFold_666_pseudo_0825_500/cn/data_fold_1/test.csv'
+        },
+        'cn_fold_2_pseudo_test': {
+            'train': './data/data_StratifiedKFold_666_pseudo_0825_500/cn/data_fold_2/train.csv',
+            'test': './data/data_StratifiedKFold_666_pseudo_0825_500/cn/data_fold_2/test.csv'
+        },
+        'cn_fold_3_pseudo_test': {
+            'train': './data/data_StratifiedKFold_666_pseudo_0825_500/cn/data_fold_3/train.csv',
+            'test': './data/data_StratifiedKFold_666_pseudo_0825_500/cn/data_fold_3/test.csv'
+        },
+        'cn_fold_4_pseudo_test': {
+            'train': './data/data_StratifiedKFold_666_pseudo_0825_500/cn/data_fold_4/train.csv',
+            'test': './data/data_StratifiedKFold_666_pseudo_0825_500/cn/data_fold_4/test.csv'
         },
     }
     

@@ -217,20 +217,27 @@ class Instructor:
                     n_correct += (torch.argmax(outputs, -1) == targets).sum().item()
                     n_total += len(outputs)
                     train_acc = n_correct / n_total
-                    test_acc, f1, f1_0, f1_1 = self._evaluate()
+                    test_acc, f1, f1_0, f1_1, w_acc = self._evaluate()
                     # score = w_acc*0.2 + f1
                     # score = test_acc*0.15 + f1_0*0.35 + f1_1
+                    # score = test_acc + f1_1
                     score = test_acc + f1_1
-                    weight_score = test_acc*0.5 + f1_1
+                    # weight_score = test_acc*0.5 + f1_1
+                    weight_score = test_acc + f1_1
 
                     if test_acc > max_test_acc:
                         max_test_acc = test_acc
 
-                    # if w_acc > max_w_acc:
-                    #     max_w_acc = w_acc
+                    if w_acc > max_w_acc:
+                        max_w_acc = w_acc
 
                     if f1 > max_f1:
                         max_f1 = f1
+                        # if not os.path.exists('state_dict'):
+                        #     os.mkdir('state_dict')
+                        # path = './state_dict/{0}_{1}_f1_{2:.4f}_f1_0_{3:.4f}_f1_1_{4:.4f}_acc_{5:.4f}_wacc{6:.4f}_score_{7:.4f}'.format(self.opt.model_name, self.opt.dataset, f1, f1_0, f1_1, test_acc, w_acc, score)
+                        # logger.info('>> The {0} has been promoted on {1} with score {2:.4f}'.format(self.opt.model_name, self.opt.dataset, score))
+                        # self.best_model = copy.deepcopy(self.model)
                     
                     if score > max_score:
                         max_score = score
@@ -242,13 +249,12 @@ class Instructor:
                         max_weight_score = weight_score
                         if not os.path.exists('state_dict'):
                             os.mkdir('state_dict')
-                        # path = './state_dict/{0}_{1}_score_{2:.4f}_f1_{3:.4f}'.format(self.opt.model_name, self.opt.dataset, score, f1)
-                        path = './state_dict/{0}_{1}_f1_{2:.4f}_f1_0_{3:.4f}_f1_1_{4:.4f}_acc_{5:.4f}_score_{6:.4f}'.format(self.opt.model_name, self.opt.dataset, f1, f1_0, f1_1, test_acc, score)
+                        path = './state_dict/{0}_{1}_f1_{2:.4f}_f1_0_{3:.4f}_f1_1_{4:.4f}_acc_{5:.4f}_wacc_{6:.4f}_score_{7:.4f}'.format(self.opt.model_name, self.opt.dataset, f1, f1_0, f1_1, test_acc, w_acc, score)
                         logger.info('>> The {0} has been promoted on {1} with score {2:.4f}'.format(self.opt.model_name, self.opt.dataset, score))
                         self.best_model = copy.deepcopy(self.model)
 
-                    logger.info('loss: {:.4f}, acc: {:.4f}, test_acc: {:.4f}, f1: {:.4f}, f1_0: {:.4f}, f1_1: {:.4f}'\
-                                .format(loss.item(), train_acc, test_acc, f1, f1_0, f1_1))
+                    logger.info('loss: {:.4f}, acc: {:.4f}, test_acc: {:.4f}, w_acc: {:.4f}, f1: {:.4f}, f1_0: {:.4f}, f1_1: {:.4f}, score: {:.4f}'\
+                                .format(loss.item(), train_acc, test_acc, w_acc, f1, f1_0, f1_1, score))
 
         return max_test_acc, max_w_acc, max_f1, max_score, path
     
@@ -259,19 +265,19 @@ class Instructor:
         t_targets_all, t_outputs_all, ids_all = None, None, None
         with torch.no_grad():
             for t_batch, t_sample_batched in enumerate(self.test_dataloader):
-                # ids = t_sample_batched['dialogue_id'].to(self.opt.device)
+                ids = t_sample_batched['dialogue_id'].to(self.opt.device)
                 t_inputs = [t_sample_batched[col].to(self.opt.device) for col in self.opt.inputs_cols]
                 t_targets = t_sample_batched['polarity'].to(self.opt.device)
                 t_outputs = self.model(t_inputs)
                 n_test_correct += (torch.argmax(t_outputs, -1) == t_targets).sum().item()
                 n_test_total += len(t_outputs)
                 
-                # ids_all = torch.cat((ids_all, ids), dim = 0) if ids_all is not None else ids
+                ids_all = torch.cat((ids_all, ids), dim = 0) if ids_all is not None else ids
                 t_targets_all = torch.cat((t_targets_all, t_targets), dim=0) if t_targets_all is not None else t_targets
                 t_outputs_all = torch.cat((t_outputs_all, t_outputs), dim=0) if t_outputs_all is not None else t_outputs
         test_acc = n_test_correct / n_test_total
 
-        # dialog_id = ids_all.data.cpu()
+        dialog_id = ids_all.data.cpu()
         labels = t_targets_all.data.cpu()
         predic = torch.argmax(t_outputs_all, -1).cpu()
 
@@ -279,14 +285,14 @@ class Instructor:
         f1_0 = metrics.f1_score(labels==0, predic==0, labels=True)
         # f1_1 = metrics.f1_score(labels==1, predic==1, labels=True)
         f1_1 = metrics.f1_score(labels, predic, average='binary')
-        # w_acc = self.weighted_acc(dialog_id, labels, predic)
+        w_acc = self.weighted_acc(dialog_id.tolist(), labels.tolist(), predic.tolist())
         
         if show_results:
             report = metrics.classification_report(labels, predic, digits=4)
             confusion = metrics.confusion_matrix(labels, predic)
-            return report, confusion, f1, f1_0, f1_1
+            return report, confusion, f1, f1_0, f1_1, w_acc
 
-        return test_acc, f1, f1_0, f1_1
+        return test_acc, f1, f1_0, f1_1, w_acc
 
     def weighted_acc(self, ids, labels, predict_labels):
         # compute the weighted_accuracy
@@ -314,14 +320,15 @@ class Instructor:
         # self.model.load_state_dict(torch.load(model_path))
         self.model = self.best_model
         self.model.eval()
-        test_report, test_confusion, f1, f1_0, f1_1 = self._evaluate(show_results=True)
+        test_report, test_confusion, f1, f1_0, f1_1, w_acc = self._evaluate(show_results=True)
         logger.info("Precision, Recall and F1-Score...")
         logger.info(test_report)
         logger.info("Confusion Matrix...")
         logger.info(test_confusion)
-        logger.info('f1: {:.4f},'.format(f1))
-        logger.info('f1_0: {:.4f},'.format(f1_0))
-        logger.info('f1_1: {:.4f},'.format(f1_1))
+        logger.info('f1: {:.4f}'.format(f1))
+        logger.info('f1_0: {:.4f}'.format(f1_0))
+        logger.info('f1_1: {:.4f}'.format(f1_1))
+        logger.info('w_acc: {:.4f}'.format(w_acc))
 
     
     def run(self, repeats=1):
@@ -398,6 +405,27 @@ def main():
         'en_fold_4_dia_aug': {
             'train': './data/data_StratifiedKFold_666_dia_aug/en/data_fold_4/train.csv',
             'test': './data/data_StratifiedKFold_666_dia_aug/en/data_fold_4/test.csv'
+        },
+        # * en-data_dia_aug_0821
+        'en_fold_0_dia_aug_0821': {
+            'train': './data/data_StratifiedKFold_666_dia_aug_0821/en/data_fold_0/train.csv',
+            'test': './data/data_StratifiedKFold_666_dia_aug_0821/en/data_fold_0/test.csv'
+        },
+        'en_fold_1_dia_aug_0821': {
+            'train': './data/data_StratifiedKFold_666_dia_aug_0821/en/data_fold_1/train.csv',
+            'test': './data/data_StratifiedKFold_666_dia_aug_0821/en/data_fold_1/test.csv'
+        },
+        'en_fold_2_dia_aug_0821': {
+            'train': './data/data_StratifiedKFold_666_dia_aug_0821/en/data_fold_2/train.csv',
+            'test': './data/data_StratifiedKFold_666_dia_aug_0821/en/data_fold_2/test.csv'
+        },
+        'en_fold_3_dia_aug_0821': {
+            'train': './data/data_StratifiedKFold_666_dia_aug_0821/en/data_fold_3/train.csv',
+            'test': './data/data_StratifiedKFold_666_dia_aug_0821/en/data_fold_3/test.csv'
+        },
+        'en_fold_4_dia_aug_0821': {
+            'train': './data/data_StratifiedKFold_666_dia_aug_0821/en/data_fold_4/train.csv',
+            'test': './data/data_StratifiedKFold_666_dia_aug_0821/en/data_fold_4/test.csv'
         },
         # * en-data
         'en_fold_0': {
@@ -484,26 +512,26 @@ def main():
             'train': './data/data_StratifiedKFold_666_filtered/en/data_fold_4/train.csv',
             'test': './data/data_StratifiedKFold_666_filtered/en/data_fold_4/test.csv'
         },
-        # * en-data_pseudo
-        'en_fold_0_pseudo': {
-            'train': './data/data_StratifiedKFold_666_pseudo_0627/en/data_fold_0/train.csv',
-            'test': './data/data_StratifiedKFold_666_pseudo_0627/en/data_fold_0/test.csv'
+        # * en-dia_aug_pseudo
+        'en_fold_0_dia_aug_pseudo': {
+            'train': './data/data_StratifiedKFold_666_dia_aug_pseudo_0819/en/data_fold_0/train.csv',
+            'test': './data/data_StratifiedKFold_666_dia_aug_pseudo_0819/en/data_fold_0/test.csv'
         },
-        'en_fold_1_pseudo': {
-            'train': './data/data_StratifiedKFold_666_pseudo_0627/en/data_fold_1/train.csv',
-            'test': './data/data_StratifiedKFold_666_pseudo_0627/en/data_fold_1/test.csv'
+        'en_fold_1_dia_aug_pseudo': {
+            'train': './data/data_StratifiedKFold_666_dia_aug_pseudo_0819/en/data_fold_1/train.csv',
+            'test': './data/data_StratifiedKFold_666_dia_aug_pseudo_0819/en/data_fold_1/test.csv'
         },
-        'en_fold_2_pseudo': {
-            'train': './data/data_StratifiedKFold_666_pseudo_0627/en/data_fold_2/train.csv',
-            'test': './data/data_StratifiedKFold_666_pseudo_0627/en/data_fold_2/test.csv'
+        'en_fold_2_dia_aug_pseudo': {
+            'train': './data/data_StratifiedKFold_666_dia_aug_pseudo_0819/en/data_fold_2/train.csv',
+            'test': './data/data_StratifiedKFold_666_dia_aug_pseudo_0819/en/data_fold_2/test.csv'
         },
-        'en_fold_3_pseudo': {
-            'train': './data/data_StratifiedKFold_666_pseudo_0627/en/data_fold_3/train.csv',
-            'test': './data/data_StratifiedKFold_666_pseudo_0627/en/data_fold_3/test.csv'
+        'en_fold_3_dia_aug_pseudo': {
+            'train': './data/data_StratifiedKFold_666_dia_aug_pseudo_0819/en/data_fold_3/train.csv',
+            'test': './data/data_StratifiedKFold_666_dia_aug_pseudo_0819/en/data_fold_3/test.csv'
         },
-        'en_fold_4_pseudo': {
-            'train': './data/data_StratifiedKFold_666_pseudo_0627/en/data_fold_4/train.csv',
-            'test': './data/data_StratifiedKFold_666_pseudo_0627/en/data_fold_4/test.csv'
+        'en_fold_4_dia_aug_pseudo': {
+            'train': './data/data_StratifiedKFold_666_dia_aug_pseudo_0819/en/data_fold_4/train.csv',
+            'test': './data/data_StratifiedKFold_666_dia_aug_pseudo_0819/en/data_fold_4/test.csv'
         },
     }
     

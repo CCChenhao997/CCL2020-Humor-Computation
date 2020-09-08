@@ -84,11 +84,6 @@ if __name__=="__main__":
         }
     }
 
-    # pretrained_bert_names = {
-    #     'cn':  './pretrain_models/ERNIE_cn',
-    #     'en':  'bert-base-uncased'
-    # }
-
     # opt = get_parameters()
     opt.dataset_file = dataset_files[opt.dataset]
     # opt.pretrained_bert_name = pretrained_bert_names[opt.dataset]
