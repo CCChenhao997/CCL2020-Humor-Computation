@@ -1,4 +1,7 @@
 # CCL2020-Humor-Computation
+<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+[![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors-)
+<!-- ALL-CONTRIBUTORS-BADGE:END -->
 CCL2020 第二届“小牛杯”幽默计算——情景喜剧笑点识别
 
 ---------------
@@ -43,3 +46,22 @@ CCL2020 第二届“小牛杯”幽默计算——情景喜剧笑点识别
 - [ ] 多卡并行训练
 - [x] 混合精度训练
 
+
+## Contributors ✨
+
+Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tr>
+    <td align="center"><a href="https://github.com/airflier"><img src="https://avatars0.githubusercontent.com/u/51824426?v=4" width="100px;" alt=""/><br /><sub><b>airflier</b></sub></a><br /><a href="https://github.com/CCChenhao997/CCL2020-Humor-Computation/commits?author=airflier" title="Code">💻</a></td>
+  </tr>
+</table>
+
+<!-- markdownlint-enable -->
+<!-- prettier-ignore-end -->
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
